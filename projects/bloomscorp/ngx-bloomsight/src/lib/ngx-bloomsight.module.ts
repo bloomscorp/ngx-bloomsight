@@ -1,7 +1,7 @@
 import {ModuleWithProviders, NgModule} from '@angular/core';
 import {NgxBloomsightComponent} from './ngx-bloomsight.component';
-import {FootprintConfig} from './interface/footprint-config';
-import {FootprintEventService} from './service/footprint-event.service';
+import {BloomsightEventService} from './service/bloomsight-event.service';
+import {IConfig} from '@bloomscorp/bloomsight.js/dist/configuration/interface/config';
 
 
 
@@ -17,11 +17,11 @@ import {FootprintEventService} from './service/footprint-event.service';
 })
 export class NgxBloomsightModule {
     
-    static forRoot(config: FootprintConfig): ModuleWithProviders<NgxBloomsightModule> {
+    static forRoot(config: IConfig): ModuleWithProviders<NgxBloomsightModule> {
 
         return {
             ngModule: NgxBloomsightModule,
-            providers: [FootprintEventService, {provide: 'config', useValue: config}]
+            providers: [BloomsightEventService, {provide: 'config', useValue: config}]
         };
     }
 }
