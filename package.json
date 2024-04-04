@@ -1,20 +1,21 @@
 {
     "name": "ngx-bloomsight",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "homepage": "https://github.com/bloomscorp/ngx-bloomsight",
-	"bugs": {
-		"url": "https://github.com/bloomscorp/ngx-bloomsight/issues"
-	},
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/bloomscorp/ngx-bloomsight"
-	},
-	"author": {
-		"name": "Deep",
-		"email": "deep@bloomscorp.com"
-	},
-	"license": "MIT",
+    "bugs": {
+        "url": "https://github.com/bloomscorp/ngx-bloomsight/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/bloomscorp/ngx-bloomsight"
+    },
+    "author": {
+        "name": "Deep",
+        "email": "deep@bloomscorp.com"
+    },
+    "license": "MIT",
     "scripts": {
+        "prepare": "husky",
         "ng": "ng",
         "start": "ng serve",
         "build": "ng build",
@@ -39,7 +40,7 @@
     },
     "devDependencies": {
         "@commitlint/cli": "^18.6.0",
-		"@commitlint/config-conventional": "^18.6.0",
+        "@commitlint/config-conventional": "^18.6.0",
         "@angular-devkit/build-angular": "^14.2.13",
         "@angular/cli": "~14.2.13",
         "@angular/compiler-cli": "^14.2.0",
