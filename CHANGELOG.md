@@ -1,5 +1,12 @@
 
 
+# [1.4.0](https://github.com/bloomscorp/ngx-bloomsight/compare/v0.2.0...v1.4.0) (2024-04-04)
+
+
+### Features
+
+* integrate @bloomscorp/bloomsight.js ([a5aff2d](https://github.com/bloomscorp/ngx-bloomsight/commit/a5aff2d181204571d9ac46579660d5c8926c8923))
+
 # [0.2.0](https://github.com/bloomscorp/ngx-bloomsight/compare/v0.1.1...v0.2.0) (2024-04-04)
 
 
