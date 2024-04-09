@@ -31,12 +31,16 @@ export class BloomsightEventService {
     }
 
 
-    public resolveSimpleEvent(eventToken: string): void {
-        simpleEvent(eventToken);
+    public resolveSimpleEvent(eventToken: string, label: string = ''): void {
+        simpleEvent(eventToken, label);
     }
 
-    public resolveDataEvent(eventToken: string, eventData: {[key: string]: any}): void {
-        dataEvent(eventToken, eventData);
+    public resolveDataEvent(
+        eventToken: string, 
+        eventData: {[key: string]: any},
+        label: string = ''
+    ): void {
+        dataEvent(eventToken, eventData, label);
     }
 
     public sendMail(
