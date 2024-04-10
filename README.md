@@ -31,8 +31,8 @@ import {NgxBloomsightModule} from '@bloomscorp/ngx-bloomsight';
         AppRoutingModule,
         NgxBloomsightModule.forRoot({
             propertyToken: '65143f755c403e030c222340',
-            developmentMode: true,
-            stopService: false,
+            isDevelopmentMode: true,
+            stopAll: false,
             ...
         }),
     ],
@@ -58,7 +58,8 @@ Below is the table with all the possible options that can be configured.
 
 ## Page View Event
 To tracking website visits for your angular application just initialize `BloomsightEventService` service in  `app.component.ts`.
-```
+
+```ts
 import {BloomsightEventService} from '@bloomscorp/ngx-bloomsight';
 
 constructor(public bloomsightService: BloomsightEventService) { }
@@ -73,11 +74,13 @@ import {BloomsightEventService} from '@bloomscorp/ngx-bloomsight';
 
 constructor(public bloomsightService: BloomsightEventService) { }
 
-this.bloomsightService.resolveSimpleEvent('65d735b122354c8ba6a489c2');
+this.bloomsightService
+    .resolveSimpleEvent('65d735b122354c8ba6a489c2', 'Contact Us CTA button');
 ```
 | Option       | Type     | Description        | Mandatory | Default |
 |:-------------|:---------|:-------------------|:----------|:--------|
 | `eventToken` | `string` | Id of simple event | ✅         | NA      |
+| `label`      | `string` | a label/name for the event for future reference | ❌         | ''      |
 
 
 ### Data Event
@@ -94,13 +97,15 @@ this.bloomsightService.resolveDataEvent(
     {
         productId: 120,
         sku: 'PROD021298'
-    }
+    },
+    'Add to Wishlist CTA button'
 );
 ```
 | Option       | Type     | Description                              | Mandatory | Default |
 |:-------------|:---------|:-----------------------------------------|:----------|:--------|
 | `eventToken` | `string` | Id of data event                         | ✅         | NA      |
 | `eventData`  | `Object` | additional metadata in key, value format | ✅         | NA      |
+| `label`      | `string` | a label/name for the event for future reference | ❌         | ''      |
 
 
 ### Send Email
@@ -135,4 +140,3 @@ this.bloomsightService.sendEmail(
 ## Support
 
 Report issues or feature requests [here]()
-

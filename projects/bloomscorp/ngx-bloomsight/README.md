@@ -31,8 +31,8 @@ import {NgxBloomsightModule} from '@bloomscorp/ngx-bloomsight';
         AppRoutingModule,
         NgxBloomsightModule.forRoot({
             propertyToken: '65143f755c403e030c222340',
-            developmentMode: true,
-            stopService: false,
+            isDevelopmentMode: true,
+            stopAll: false,
             ...
         }),
     ],
@@ -58,7 +58,8 @@ Below is the table with all the possible options that can be configured.
 
 ## Page View Event
 To tracking website visits for your angular application just initialize `BloomsightEventService` service in  `app.component.ts`.
-```
+
+```ts
 import {BloomsightEventService} from '@bloomscorp/ngx-bloomsight';
 
 constructor(public bloomsightService: BloomsightEventService) { }
