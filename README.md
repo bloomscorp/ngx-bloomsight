@@ -113,11 +113,11 @@ this.bloomsightService.resolveDataEvent(
 Use `sendEmail` method to send email
 
 ```ts
-import {BloomsightEventService} from '@bloomscorp/ngx-bloomsight';
+import {BloomsightMailService} from '@bloomscorp/ngx-bloomsight';
 
-constructor(public bloomsightService: BloomsightEventService) { }
+constructor(public bloomsightMailService: BloomsightMailService) { }
 
-this.bloomsightService.sendEmail(
+this.bloomsightMailService.sendEmail(
   '66d735b122355c8ba6a456f8', 
   '63d735h822355s6ba6a4556k',
   '61d895h922355b6ba6a4587a',
@@ -130,7 +130,9 @@ this.bloomsightService.sendEmail(
 | `engineId`        | `string`   | Id of the engine that will be used to send email                                           | ✅         | NA      |
 | `templateId`      | `string`   | Id of the email template that will be used as email body                                   | ✅         | NA      |
 | `templateOwnerId` | `string`   | Id of the user who has created the template                                                | ✅         | NA      |
-| `emailMetaData`   | `FormData` | attachment & variables used in the template & their respective values in key, value format | ❌         | NA      |
+| `emailMetaData`   | `FormData` | attachment & variables used in the template & their respective values in key, value format | ✅          | NA      |
+| `onSuccess`   | `function` | pass a function to trigger on successfully sending email | ✅         | NA      |
+| `onError`   | `function` | pass a function to trigger when an error occurs | ✅          | NA      |
 
 ## License
 
