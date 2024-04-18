@@ -1,5 +1,7 @@
 
 
+## [1.4.5](https://github.com/bloomscorp/ngx-bloomsight/compare/v1.4.4...v1.4.5) (2024-04-18)
+
 ## [1.4.4](https://github.com/bloomscorp/ngx-bloomsight/compare/v1.4.3...v1.4.4) (2024-04-13)
 
 ## [1.4.3](https://github.com/bloomscorp/ngx-bloomsight/compare/v1.4.2...v1.4.3) (2024-04-13)
