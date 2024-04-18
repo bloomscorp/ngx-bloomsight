@@ -42,13 +42,4 @@ export class BloomsightEventService {
     ): void {
         dataEvent(eventToken, eventData, label);
     }
-
-    public sendMail(
-        engineId: string,
-        templateId: string,
-        templateOwnerId: string,
-        emailMetaData: FormData
-    ): void {
-        mail(engineId, templateId, templateOwnerId, emailMetaData);
-    }
 }
