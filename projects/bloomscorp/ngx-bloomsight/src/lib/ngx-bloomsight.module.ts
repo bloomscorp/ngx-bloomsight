@@ -2,7 +2,7 @@ import {ModuleWithProviders, NgModule} from '@angular/core';
 import {NgxBloomsightComponent} from './ngx-bloomsight.component';
 import {BloomsightEventService} from './service/bloomsight-event.service';
 import {IConfig} from '@bloomscorp/bloomsight.js/dist/configuration/interface/config';
-import {BloomsightMailService} from '@bloomscorp/ngx-bloomsight';
+import {BloomsightMailService} from './service/bloomsight-mail.service';
 
 
 
