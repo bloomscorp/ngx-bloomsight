@@ -18,14 +18,14 @@ import {BloomsightMailService} from './service/bloomsight-mail.service';
 })
 export class NgxBloomsightModule {
     
-    static forRoot(config: IConfig): ModuleWithProviders<NgxBloomsightModule> {
+    static forRoot(bloomsightConfig: IConfig): ModuleWithProviders<NgxBloomsightModule> {
 
         return {
             ngModule: NgxBloomsightModule,
             providers: [
                 BloomsightEventService, 
                 BloomsightMailService, 
-                {provide: 'config', useValue: config}
+                {provide: 'bloomsightConfig', useValue: bloomsightConfig}
             ]
         };
     }

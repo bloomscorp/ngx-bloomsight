@@ -15,7 +15,7 @@ export class BloomsightEventService {
     }
 
     constructor(
-        @Inject('config') private _config: IConfig,
+        @Inject('bloomsightConfig') private _config: IConfig,
         private _router: Router
     ) {
         this.init();

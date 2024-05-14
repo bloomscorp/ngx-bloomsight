@@ -11,7 +11,7 @@ export class BloomsightMailService {
     }
 
     constructor(
-        @Inject('config') private _config: IConfig,
+        @Inject('bloomsightConfig') private _config: IConfig,
     ) {
         this.init();
     }
