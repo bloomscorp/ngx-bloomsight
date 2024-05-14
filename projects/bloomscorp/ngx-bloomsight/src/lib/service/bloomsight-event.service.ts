@@ -1,4 +1,4 @@
-import {Inject, Injectable} from '@angular/core';
+import {Inject, Injectable, OnDestroy, OnInit} from '@angular/core';
 import {init} from '@bloomscorp/bloomsight.js';
 import {pageViewObserver as pageView} from '@bloomscorp/bloomsight.js';
 import {NavigationEnd, Router} from '@angular/router';
@@ -6,9 +6,13 @@ import {IConfig} from '@bloomscorp/bloomsight.js/dist/configuration/interface/co
 import {resolveSimpleEvent as simpleEvent} from '@bloomscorp/bloomsight.js';
 import {resolveDataEvent as dataEvent} from '@bloomscorp/bloomsight.js';
 import {sendEmail as mail} from '@bloomscorp/bloomsight.js';
+import {filter, take} from 'rxjs/operators';
+import {Subscription} from 'rxjs';
 
 @Injectable()
 export class BloomsightEventService {
+
+    private _previousUrl: string = '';
 
     init() {
         init(this._config);
@@ -23,11 +27,17 @@ export class BloomsightEventService {
     }
 
     public pageViewObserver(): void {
+        
         this._router.events.subscribe(event => {
             if (event instanceof NavigationEnd) {
-                pageView();
+                
+                if (this._previousUrl !== event.url) {
+                    pageView();
+                }
+
+                this._previousUrl = event.url;
             }
-        })
+        });
     }
 
 
