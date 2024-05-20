@@ -1,6 +1,6 @@
 {
   "name": "@bloomscorp/ngx-bloomsight",
-  "version": "1.4.20",
+  "version": "1.4.21",
   "peerDependencies": {
     "@angular/common": "^14.2.0",
     "@angular/core": "^14.2.0",

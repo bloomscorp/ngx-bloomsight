@@ -32,7 +32,7 @@ export class BloomsightEventService {
             if (event instanceof NavigationEnd) {
                 
                 if (this._previousUrl !== event.url) {
-                    setTimeout(pageView, 5000);
+                    pageView();
                 }
 
                 this._previousUrl = event.url;
