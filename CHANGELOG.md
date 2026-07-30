@@ -1,5 +1,16 @@
 
 
+# [1.6.0](https://github.com/bloomscorp/ngx-bloomsight/compare/v1.4.22...v1.5.1) (2026-07-30)
+
+
+### Features
+
+* migrate to footprint-api and require bloomsight.js >=0.7.0 ([324bb1b](https://github.com/bloomscorp/ngx-bloomsight/commit/324bb1b684c648aafd53cb7004e2b791397eb9e9))
+
+
+
+## [1.5.1](https://github.com/bloomscorp/ngx-bloomsight/compare/v1.4.22...v1.5.1) (2025-02-17)
+
 ## [1.5.1](https://github.com/bloomscorp/ngx-bloomsight/compare/v1.4.22...v1.5.1) (2025-02-17)
 
 ## [1.5.1](https://github.com/bloomscorp/ngx-bloomsight/compare/v1.4.22...v1.5.1) (2025-02-17)
