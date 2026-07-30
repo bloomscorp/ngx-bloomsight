@@ -1,6 +1,6 @@
 # ngx-bloomsight
 
-A client side angular library to work with bloomsight.io
+A client side angular library to work with [Footprint](https://footprint.bloomscorp.com)
 
 ## Badges
 
@@ -46,7 +46,7 @@ Below is the table with all the possible options that can be configured.
 
 | Option                 | Type      | Description                                                                                                                                 | Mandatory | Default |
 |:-----------------------|:----------|:--------------------------------------------------------------------------------------------------------------------------------------------|:----------|:--------|
-| `propertyToken`        | `string`  | [bloomsight.io](https://bloomsight.io) property token                                                                                       | ✅         | NA      |
+| `propertyToken`        | `string`  | [Footprint](https://footprint.bloomscorp.com) property token                                                                                | ✅         | NA      |
 | `isDevelopmentMode`    | `boolean` | if `true`, then logs data in the browser console                                                                                            | ✅         | NA      |
 | `observePageViaWebAPI` | `boolean` | if `true`, will detect page view event based on web APIs. However, if `false`, `pageViewObserver` should be used to trigger page view event | ❌         | `true`  |
 | `stopSimpleEvent`      | `boolean` | stops only simple event tracking                                                                                                            | ❌         | `false` |
