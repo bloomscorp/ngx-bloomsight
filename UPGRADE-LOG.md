@@ -658,6 +658,9 @@ Nothing in the repo changed; the build's accounting did.
 
 **Why it is being left alone:** it is a warning, it concerns the demo app only,
 and the demo app is scheduled for replacement anyway (T2 in MODERNISATION.md).
+**Confirmed by the owner, 2026-10-12:** leave it, and if the hard error ceiling
+is hit, treat that as the trigger to pick up the demo app rebuild rather than to
+patch the budget in isolation. Do not touch it before then.
 
 **Why it is still worth logging:** at 3.78 kB it sits **0.22 kB below the hard
 error ceiling**. If a later major changes extraction or minification even
@@ -683,6 +686,105 @@ before the step that did not materialise.
 | Library `peerDependencies` | ✅ `git diff` empty |
 | **`minVersion`** | ✅ **still 14.0.0** |
 | `tsc --noEmit` on the library | ✅ exit 0, no deprecations |
+
+---
+
+## Standalone — adopted at the 19 step, by decision
+
+The Angular 19 migration pinned both components to `standalone: false` to
+preserve pre-19 behaviour. **Decision taken to go the other way instead:** adopt
+the framework's new default now, test it, and keep it. The reasoning is that
+Angular has been moving away from NgModules for several majors, so carrying
+`standalone: false` forward only defers the same work into a later, larger
+change — and every major in between would have to keep honouring it.
+
+This is a **deliberate change, not a migration**, so it is recorded separately
+from the 18 → 19 entry.
+
+### What changed
+
+| File | Change |
+|---|---|
+| `lib/ngx-bloomsight.component.ts` | `standalone: false` → **`standalone: true`**; decorator restored to the file's own 2-space style after the schematic's reformat |
+| `lib/ngx-bloomsight.module.ts` | Component moved out of `declarations` into `imports`; `exports` unchanged. The module now declares nothing |
+| `lib/ngx-bloomsight.component.spec.ts` | Rewritten — `declarations:` → `imports:` (mandatory: declaring a standalone component is an error), plus real coverage of both consumption paths |
+
+### Why the module survives
+
+`NgxBloomsightModule` is now a compatibility shell: it imports the standalone
+component and re-exports it, so every existing consumer doing
+`imports: [NgxBloomsightModule]` is unaffected. What keeps it alive is
+`forRoot()` — still the only way to supply configuration and provide the two
+services.
+
+That is worth stating plainly: **the component was never the library's real
+NgModule coupling.** It is CLI scaffolding that renders
+*"ngx-bloomsight works!"* and that nothing injects. The actual coupling is that
+initialisation and configuration hang off `NgModule.forRoot()`, which is P5 in
+MODERNISATION.md and the root of B6/B7/B8. A standalone consumer can still get
+there:
+
+```ts
+bootstrapApplication(AppComponent, {
+  providers: [importProvidersFrom(NgxBloomsightModule.forRoot(config))]
+});
+```
+
+That works, but it is the interop shim rather than the idiomatic path.
+`provideBloomsight()` replaces it at 2.0.0 and is **deliberately not pulled
+forward** — it is a public API addition that belongs with the rest of the
+rewrite, not a side effect of a version step.
+
+### The compatibility check
+
+`standalone: true` is recorded in the published partial declarations, so it
+could have raised the floor. It did not:
+
+```
+ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "19.2.25",
+                       type: NgxBloomsightComponent, isStandalone: true, ... })
+ɵɵngDeclareNgModule({  minVersion: "14.0.0", version: "19.2.25",
+                       type: NgxBloomsightModule,
+                       imports: [NgxBloomsightComponent],
+                       exports: [NgxBloomsightComponent] })
+```
+
+Totals identical to before the change: `minVersion 12.0.0` x14, `14.0.0` x2. So
+`>=14.2.0 <23.0.0` still holds, and `isStandalone: true` costs nothing that
+`isStandalone: false` did not already cost.
+
+> **Caveat, logged not resolved.** The 14.0.0 figure is the *linker* floor.
+> Standalone components were developer preview in Angular 14 and only stable in
+> 15, so a genuine Angular 14 consumer is theoretically supported here but has
+> never been tested. This is the same untested loose end recorded at the 16 step
+> (ES2022 output for old toolchains), and it gets settled the same way: by
+> installing the built tarball into a real old app when the 2.0.0 peer range is
+> finalised.
+
+### Tests
+
+The component spec went from 1 assertion to 4, and the library suite from **2
+tests to 5**:
+
+| Test | Proves |
+|---|---|
+| `should create` | unchanged |
+| `should be standalone, so it can be imported without a module` | `imports: [NgxBloomsightComponent]` would throw for a declared component, so the test reaching this point is itself the proof; it also asserts `ɵcmp.standalone` so an accidental revert fails loudly |
+| `should render its template` | the component actually renders, which the original stub never checked |
+| `should still be reachable through the module` | a **standalone host** importing `NgxBloomsightModule` renders the component — the regression guard for every existing consumer |
+
+All green: library 5/5, demo app 3/3.
+
+### Deliberately out of scope
+
+- **The demo app keeps `standalone: false`** on `AppComponent`. Converting it
+  means `bootstrapApplication`, deleting `AppModule` and rewiring providers —
+  which is the demo app rework (T2), explicitly deferred. The demo app has
+  known problems and gets rebuilt before anything is published; the flag goes
+  then.
+- **`provideBloomsight()`** — see above. 2.0.0.
+- **The CSS budget warning** — decision taken to leave it until it either trips
+  the hard error ceiling or the demo app is rebuilt, whichever comes first.
 
 ---
 

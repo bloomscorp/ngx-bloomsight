@@ -211,10 +211,10 @@ revisit.
 | | Issue |
 |---|---|
 | **P1** | Deep imports — `@bloomscorp/bloomsight.js/dist/configuration/interface/config` — and they **leak into the published `.d.ts`**. The core now exports `IConfig` from its root; this breaks the day the core adds an `exports` map. |
-| **P2** | CLI scaffolding is public API: `NgxBloomsightComponent` renders *"ngx-bloomsight works!"*, `NgxBloomsightService` is an empty class. Both exported from `public-api.ts`. |
+| **P2** | CLI scaffolding is public API: `NgxBloomsightComponent` renders *"ngx-bloomsight works!"*, `NgxBloomsightService` is an empty class. Both exported from `public-api.ts`. Still true — the component was made **standalone** at the Angular 19 step, but standalone scaffolding is still scaffolding. Delete both at 2.0.0. |
 | **P3** | `@Inject('bloomsightConfig')` — a **string** token. No type safety, and it collides with anything else using that string. |
 | **P4** | `sendMail()` takes seven positional arguments including `templateOwnerId` (an internal), plus success/error callbacks rather than an `Observable`. |
-| **P5** | No `provideBloomsight()`. `NgModule.forRoot()` is the only way in. |
+| **P5** | No `provideBloomsight()`. `NgModule.forRoot()` is the only way in — and since the component went standalone at 19, this is now **the library's only remaining NgModule coupling**. A standalone app has to reach for `importProvidersFrom(NgxBloomsightModule.forRoot(config))`, which works but is the interop shim rather than the idiomatic path. |
 | **P6** | **Core fix.** `EmailEngineTypeEnum` is a type-only declaration in `bloomsight.js`, so importing it as a value yields `undefined` and silently routes mail to SMTP. The wrapper works around it with `as unknown as`. Fix it in the core so no wrapper needs the cast. |
 
 ---
@@ -223,11 +223,11 @@ revisit.
 
 | | Current | Target |
 |---|---|---|
-| **A1** | Angular **14.2**, TypeScript 4.7, zone.js 0.11, rxjs 7.5 | Angular 19 |
-| **A2** | No standalone support | standalone-first, `provideBloomsight()` |
+| **A1** | ⏳ Angular **19.2.25**, TypeScript 5.8.3, zone.js 0.15.1, rxjs 7.5 (was 14.2 / 4.7 / 0.11) | Angular 22 — see UPGRADE-LOG.md |
+| **A2** | 🟡 **Half done.** `NgxBloomsightComponent` is `standalone: true` as of the 19 step, verified not to raise the published compatibility floor, and covered by tests on both consumption paths. Configuration is still module-only — see P5 | standalone-first, `provideBloomsight()` |
 | **A3** | No SSR guard | `isPlatformBrowser` — `init()` currently runs during server render |
 | **A4** | Manual subscription handling | `takeUntilDestroyed` / `DestroyRef` |
-| **A5** | `browserTarget` in `serve` and `extract-i18n` | `buildTarget` (renamed in 17, removed in 18) |
+| **A5** | ✅ **Done** at the Angular 17 step by the `update-workspace-config` migration | `buildTarget` |
 | **A6** | `@angular-devkit/build-angular:browser` | `:application` (esbuild) |
 | **A7** | Karma | Karma is deprecated; pick the replacement deliberately |
 | **A8** | No signals | signals where they earn their place |
@@ -236,8 +236,13 @@ revisit.
 
 ## 4. Testing
 
-- **T1** Two library specs, both CLI stubs asserting the scaffolding classes
-  construct. Nothing covers `BloomsightEventService` or `BloomsightMailService`.
+- **T1** 🟡 **Partly addressed.** The component spec was rewritten at the 19
+  standalone step and now has 4 real assertions across both consumption paths
+  (direct standalone import, and via `NgxBloomsightModule`), including a guard
+  that fails if `standalone` is ever reverted to `false`. The substance of T1
+  stands, though: `NgxBloomsightService` is still a CLI stub, and **nothing
+  covers `BloomsightEventService` or `BloomsightMailService`** — the two classes
+  that actually do the work.
 - **T2** The demo app imports the library by **source path**
   (`projects/bloomscorp/ngx-bloomsight/src/public-api`), not by package name, so
   the built and published artifact is never smoke-tested. The `tsconfig` path
