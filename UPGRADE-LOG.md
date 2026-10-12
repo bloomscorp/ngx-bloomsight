@@ -926,6 +926,128 @@ Unchanged through 20, despite the dist-layout change. `>=14.2.0 <23.0.0` holds.
 
 ---
 
+## P1 fixed — deep imports removed, before going to 21
+
+Done between 20 and 21 **by decision**, not as part of a version step, because
+Angular 20 is what raised the stakes: consumers now default to
+`moduleResolution: "bundler"`, which resolves through `exports` maps, and the
+leaked deep import in our published `.d.ts` is resolved by the *consumer's*
+compiler.
+
+### The reframing that changed the fix
+
+The first proposal was narrow — swap the deep import paths for root imports.
+Reviewing the demo app produced a better question: **why would a consumer of
+`ngx-bloomsight` ever import `bloomsight.js` at all?**
+
+It turned out the demo app does *not* import the core — but only because it
+imports `NgxBloomsightModule` without calling `forRoot()`, so it configures
+nothing and exercises nothing (that is B6). The moment it did its job properly
+it would have had to import the core, because **`IConfig` was not exported from
+`public-api.ts`**. A wrapper that forces consumers to reach past it for a type
+it requires is the actual defect; the deep imports were the visible half.
+
+So the fix has two halves.
+
+### Inward — the library stops reaching into `dist/`
+
+| Site | Before | After |
+|---|---|---|
+| `internal/bloomsight-init.ts` | `…/dist/configuration/interface/config` | root |
+| `ngx-bloomsight.module.ts` | same | now imports `BloomsightConfig` instead |
+| `service/bloomsight-event.service.ts` | same | root |
+| `service/bloomsight-mail.service.ts` | same | root |
+| `service/bloomsight-mail.service.ts` | `…/dist/email/enums/emailEngineTypeEnum` | **import removed entirely** |
+
+The fifth one is the interesting one. `EmailEngineTypeEnum` is **not exported
+from the core's root in any published version**, so the earlier plan was to wait
+for a core release. Unnecessary — the type can be read off the function that
+needs it:
+
+```ts
+type CoreEmailEngineType = Parameters<typeof mail>[0];
+```
+
+`mail` is `sendEmail`, imported from the root. This needs no new import, no core
+release, and cannot drift from the real signature the way a hand-copied type
+would. **A core release is no longer a prerequisite for P1.**
+
+### Outward — consumers never need the core
+
+New `lib/type/bloomsight-config.ts`:
+
+```ts
+export type BloomsightConfig = IConfig;
+```
+
+Exported from `public-api.ts`, and `forRoot()` now declares
+`BloomsightConfig` rather than `IConfig`, so the public signature references a
+name this package owns.
+
+It is an **alias, not a redeclaration**, on purpose: the core owns the shape,
+this package owns the name. The core can restructure internals without touching
+our public API, and the contract can be narrowed later without a breaking
+rename. This mirrors the existing precedent in
+`lib/type/bloomsight-email-engine.ts`, where `BloomsightEmailEngine` is declared
+locally rather than re-exported.
+
+### The peer floor moved, and why that is justified this time
+
+```
+"@bloomscorp/bloomsight.js": ">=0.7.0 <1.0.0"  →  ">=0.8.0 <1.0.0"
+```
+
+Only **0.8.0** exports `IConfig` from its root — 0.7.0's root exports just
+`init`, `resolveSimpleEvent`, `resolveDataEvent`, `pageViewObserver` and
+`sendEmail`. So the floor had to move for the root import to exist at all.
+
+Worth contrasting with an earlier attempt in this project to raise the same
+floor, which was reverted for having no justification behind it. This one has a
+concrete cause, and it is consistent with the migration plan, where every
+project moves to `^0.8.0` regardless.
+
+The workspace was also moved to the installed 0.8.0, so local builds typecheck
+against what the peer range now declares rather than against 0.7.0.
+
+### Verification — the published artifact, not just the source
+
+Source greps prove nothing about what ships. The check is the generated
+`index.d.ts`:
+
+| | Before | After |
+|---|---|---|
+| line 3 | `import { IConfig } from '@bloomscorp/bloomsight.js/dist/configuration/interface/config';` | `import { IConfig } from '@bloomscorp/bloomsight.js';` |
+| exported types | `BloomsightEmailEngine` | `BloomsightConfig`, `BloomsightEmailEngine` |
+
+Plus a regression guard. `ngx-bloomsight.module.spec.ts` imports **only** from
+`../public-api` and types its config with `BloomsightConfig`, so it fails to
+compile if the public surface ever loses the type again. Its third test asserts
+that `forRoot()` provides both services — pinning **B6** down as an assertion
+rather than a paragraph, so the 2.0.0 rewrite has to address it deliberately.
+
+Library tests: **5 → 8**.
+
+| Check | Result |
+|---|---|
+| `npm run build-lib` | ✅ |
+| `npm run build` (demo app) | ✅ 282.89 kB |
+| `ng test` | ✅ 3/3 and 8/8 |
+| `npm run check-version` | ✅ 1.6.0 |
+| `minVersion` | ✅ still 14.0.0 |
+| Deep imports in source | ✅ zero |
+| Deep imports in published `.d.ts` | ✅ zero |
+
+### Not done
+
+- **The demo app is unchanged.** It does not import the core, so it needed no
+  fix. It still imports `NgxBloomsightModule` without `forRoot()`, which stays
+  as-is per the standing decision to leave the demo app until its rebuild.
+- **P6 is still open** but **no longer blocks anything**: the wrapper no longer
+  imports that enum at all. It is now core hygiene — fix the type-only
+  declaration in `bloomsight.js` and export it from the root at the same time.
+
+---
+
 ## 20 → 21
 
 _Next._ From the forward map, plus what is now known:

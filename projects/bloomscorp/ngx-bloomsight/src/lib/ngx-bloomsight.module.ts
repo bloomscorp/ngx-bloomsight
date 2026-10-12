@@ -1,7 +1,7 @@
 import {ModuleWithProviders, NgModule} from '@angular/core';
 import {NgxBloomsightComponent} from './ngx-bloomsight.component';
 import {BloomsightEventService} from './service/bloomsight-event.service';
-import {IConfig} from '@bloomscorp/bloomsight.js/dist/configuration/interface/config';
+import {BloomsightConfig} from './type/bloomsight-config';
 import {BloomsightMailService} from './service/bloomsight-mail.service';
 
 
@@ -26,7 +26,7 @@ import {BloomsightMailService} from './service/bloomsight-mail.service';
 })
 export class NgxBloomsightModule {
     
-    static forRoot(bloomsightConfig: IConfig): ModuleWithProviders<NgxBloomsightModule> {
+    static forRoot(bloomsightConfig: BloomsightConfig): ModuleWithProviders<NgxBloomsightModule> {
 
         return {
             ngModule: NgxBloomsightModule,

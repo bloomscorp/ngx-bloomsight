@@ -210,12 +210,12 @@ revisit.
 
 | | Issue |
 |---|---|
-| **P1** | 🔺 **Raised in severity at Angular 20.** Deep imports — `@bloomscorp/bloomsight.js/dist/configuration/interface/config`, in 5 source files — and they **leak into the published `.d.ts`** (line 3 of the generated `index.d.ts`). From Angular 20 the CLI puts consumers on `moduleResolution: "bundler"`, which resolves through `exports` maps, so that line is resolved by the *consumer's* TypeScript against *their* copy of the core. It works only because the core ships no `exports` map (verified in 0.7.0 and 0.8.0). When the core adds one, every consumer's build breaks inside **our** `.d.ts` rather than their own code. **Fix:** import `IConfig` from the core root — but only **0.8.0** exports it from root (0.7.0 does not), so this requires raising the core peer from `>=0.7.0` to `>=0.8.0`. Justified, and consistent with the migration plan where every project moves to `^0.8.0` anyway. Needs its own commit and a decision. |
+| **P1** | ✅ **Fixed 2026-10-12.** All five deep imports removed; every core import now goes through the package root, and the published `index.d.ts` no longer references `dist/`. Two halves: *inward*, four `IConfig` imports moved to the root (needs 0.8.0, so the core peer went `>=0.7.0` → `>=0.8.0`) and the fifth, `EmailEngineTypeEnum`, was eliminated entirely with `Parameters<typeof sendEmail>[0]` — deriving the parameter type from the root-exported function, so no core release was needed. *Outward*, `BloomsightConfig` is now exported from `public-api.ts`, so a consuming app never needs to import the core to type `forRoot()`. Guarded by `ngx-bloomsight.module.spec.ts`, which imports only from `../public-api` and fails to compile if the surface regresses. |
 | **P2** | CLI scaffolding is public API: `NgxBloomsightComponent` renders *"ngx-bloomsight works!"*, `NgxBloomsightService` is an empty class. Both exported from `public-api.ts`. Still true — the component was made **standalone** at the Angular 19 step, but standalone scaffolding is still scaffolding. Delete both at 2.0.0. |
 | **P3** | `@Inject('bloomsightConfig')` — a **string** token. No type safety, and it collides with anything else using that string. |
 | **P4** | `sendMail()` takes seven positional arguments including `templateOwnerId` (an internal), plus success/error callbacks rather than an `Observable`. |
 | **P5** | No `provideBloomsight()`. `NgModule.forRoot()` is the only way in — and since the component went standalone at 19, this is now **the library's only remaining NgModule coupling**. A standalone app has to reach for `importProvidersFrom(NgxBloomsightModule.forRoot(config))`, which works but is the interop shim rather than the idiomatic path. |
-| **P6** | **Core fix.** `EmailEngineTypeEnum` is a type-only declaration in `bloomsight.js`, so importing it as a value yields `undefined` and silently routes mail to SMTP. The wrapper works around it with `as unknown as`. Fix it in the core so no wrapper needs the cast. |
+| **P6** | **Core fix, no longer blocking.** `EmailEngineTypeEnum` is a type-only declaration in `bloomsight.js`, so importing it as a value yields `undefined` and silently routes mail to SMTP. The wrapper no longer imports it at all (see P1) and deals in string literals at its own boundary, so this is now purely a core-hygiene item: fix it in `bloomsight.js` so no wrapper has to work around it, and export it from the root while you are there. |
 
 ---
 
@@ -236,13 +236,15 @@ revisit.
 
 ## 4. Testing
 
-- **T1** 🟡 **Partly addressed.** The component spec was rewritten at the 19
-  standalone step and now has 4 real assertions across both consumption paths
-  (direct standalone import, and via `NgxBloomsightModule`), including a guard
-  that fails if `standalone` is ever reverted to `false`. The substance of T1
-  stands, though: `NgxBloomsightService` is still a CLI stub, and **nothing
-  covers `BloomsightEventService` or `BloomsightMailService`** — the two classes
-  that actually do the work.
+- **T1** 🟡 **Partly addressed — 2 specs to 8 tests.** The component spec was
+  rewritten at the 19 standalone step (4 assertions, both consumption paths,
+  plus a guard against reverting `standalone`), and `ngx-bloomsight.module.spec.ts`
+  was added with the P1 fix (3 tests: the config type is reachable from the
+  public API, the config token is provided, and both services are provided by
+  `forRoot` — the last one pins B6 down as an assertion rather than a note).
+  The substance of T1 still stands: nothing exercises the **behaviour** of
+  `BloomsightEventService` or `BloomsightMailService`. Doing so needs `init()`
+  mocked, since both call it from their constructors.
 - **T2** The demo app imports the library by **source path**
   (`projects/bloomscorp/ngx-bloomsight/src/public-api`), not by package name, so
   the built and published artifact is never smoke-tested. The `tsconfig` path

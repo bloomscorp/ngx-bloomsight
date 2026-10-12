@@ -1,7 +1,7 @@
 import {Inject, Injectable} from '@angular/core';
 import {pageViewObserver as pageView} from '@bloomscorp/bloomsight.js';
 import {NavigationEnd, Router} from '@angular/router';
-import {IConfig} from '@bloomscorp/bloomsight.js/dist/configuration/interface/config';
+import {IConfig} from '@bloomscorp/bloomsight.js';
 import {resolveSimpleEvent as simpleEvent} from '@bloomscorp/bloomsight.js';
 import {resolveDataEvent as dataEvent} from '@bloomscorp/bloomsight.js';
 import {initOnce} from '../internal/bloomsight-init';

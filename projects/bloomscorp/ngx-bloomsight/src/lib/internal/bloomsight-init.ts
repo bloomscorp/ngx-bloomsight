@@ -1,5 +1,5 @@
 import {init} from '@bloomscorp/bloomsight.js';
-import {IConfig} from '@bloomscorp/bloomsight.js/dist/configuration/interface/config';
+import {IConfig} from '@bloomscorp/bloomsight.js';
 
 /**
  * Single-initialisation guard for the core SDK.
