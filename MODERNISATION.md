@@ -240,7 +240,7 @@ revisit.
 | **P3** | `@Inject('bloomsightConfig')` — a **string** token. No type safety, and it collides with anything else using that string. |
 | **P4** | `sendMail()` takes seven positional arguments including `templateOwnerId` (an internal), plus success/error callbacks rather than an `Observable`. |
 | **P5** | No `provideBloomsight()`. `NgModule.forRoot()` is the only way in — and since the component went standalone at 19, this is now **the library's only remaining NgModule coupling**. A standalone app has to reach for `importProvidersFrom(NgxBloomsightModule.forRoot(config))`, which works but is the interop shim rather than the idiomatic path. |
-| **P6** | **Core fix, no longer blocking.** `EmailEngineTypeEnum` is a type-only declaration in `bloomsight.js`, so importing it as a value yields `undefined` and silently routes mail to SMTP. The wrapper no longer imports it at all (see P1) and deals in string literals at its own boundary, so this is now purely a core-hygiene item: fix it in `bloomsight.js` so no wrapper has to work around it, and export it from the root while you are there. |
+| **P6** | ✅ **Fixed in `bloomsight.js` 2026-10-12** (`55ece65`), pending release as 0.9.0. The enum is now exported as a value from the core's root, and `sendEmail` accepts `EmailEngineTypeEnum | `${EmailEngineTypeEnum}`` so a plain `'GMAIL'` needs no cast. **Correction to what this entry used to claim:** it did *not* silently route mail to SMTP for the library itself — the minifier inlined the member comparison to a string literal, so internal routing was always correct. The breakage was entirely consumer-side: the enum was importable from nowhere. |
 
 ---
 

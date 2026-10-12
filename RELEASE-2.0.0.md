@@ -57,22 +57,47 @@ repeating exactly the untested-range problem this project has criticised twice.
 > `minVersion` in the built artifact must also come out **≤ 19.0.0**. It is the
 > compiler's own statement of the floor and the only non-negotiable evidence.
 
-## 1. Core — `bloomsight.js` 0.9.0 (blocks the wrapper's email work)
+## 1. Core — `bloomsight.js` 0.9.0 — ✅ code done, release pending
 
-- [ ] **P6** Emit `EmailEngineTypeEnum` at runtime, or replace it with a string
-      union in the signature. Verify a `.js` file exists in `dist/` afterwards —
-      the bug is that only the `.d.ts` does
-- [ ] Export the engine type from the package **root** (it is exported from no
-      entry point today, which is why the wrapper derived it with
-      `Parameters<typeof sendEmail>[0]`)
-- [ ] Audit the rest of the root exports against what a wrapper needs, so the
-      facade rule does not need another patch later
-- [ ] Release through the pipeline already built for it — one `npm publish`,
-      npm + jsDelivr, trusted publishing, provenance
-- [ ] Confirm the published tarball contains the enum's JS before bumping the
-      wrapper's peer
+Committed in `bloomsight.js` as `55ece65`. **Not yet pushed or published.**
 
----
+- [x] **P6** `EmailEngineTypeEnum` is exported as a value from `src/index.ts`,
+      so it exists at runtime. Verified in both bundles' export tables with the
+      object genuinely constructed (`GMAIL="GMAIL"`)
+- [x] `sendEmail` and `transferEmail` accept
+      ``EmailEngineType = EmailEngineTypeEnum | `${EmailEngineTypeEnum}` ``, so a
+      plain `'GMAIL'` assigns without a cast. **No wrapper needs
+      `as unknown as` any more** — the template-literal form also stays correct
+      if a member is ever added
+- [x] 4 tests on the contract, plus `scripts/verify-runtime-exports.js` as a
+      packaging gate wired into `ci.yml` and `release.yml` before publish
+- [ ] Push, release 0.9.0 through CI, confirm the published tarball
+- [ ] Then raise ngx's core peer to `>=0.9.0 <1.0.0` (**D3**)
+
+### What this turned up — and why P1 was load-bearing
+
+Verifying the fix surfaced something larger. **Published 0.8.0 contains 49
+`.d.ts` files with no `.js` beside them** — the entire per-file declaration tree
+from a pre-`tsup` build. Proved stale rather than generated, by rebuilding
+0.8.0's source from a clean tree: it emits **two** declaration files, not
+fifty-one. The core's `package.json` has no `files` field, so a release packed
+on a developer machine ships whatever is in `dist/`, and 0.8.0 predates
+publishing moving into CI.
+
+The consequence for this project is concrete:
+
+> `dist/configuration/interface/config.d.ts` — the file this library
+> deep-imported until this morning — **does not exist in a current build**, and
+> will not be in 0.9.0.
+
+So the **P1 fix was not merely tidiness.** Had the deep imports stayed, bumping
+the core to 0.9.0 would have broken this library's build outright, with an error
+pointing at a path that simply vanished. P1 was fixed hours before the thing it
+protects against became real.
+
+It also sharpens the facade rule: deep imports were resolving against
+declaration files with no implementation behind them. They worked only because
+every one was used in a type position.
 
 ## 2. Library — the 2.0.0 API
 
@@ -286,7 +311,7 @@ Mirror what `bloomsight.js` ended up with; it has already been through this.
 ## 9. Suggested order
 
 1. ~~D1–D7 answered~~ ✅ settled 2026-10-12 (§0)
-2. Core 0.9.0 (P6) — unblocks the email work and the peer decision
+2. ~~Core 0.9.0 (P6)~~ ✅ code done (`55ece65`); **release pending push/publish**
 3. Vitest spike — the unproven step; know early whether the fallback is needed
 4. Library API rewrite, with tests written alongside
 5. Demo app rewrite against the built package
