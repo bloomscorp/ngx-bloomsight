@@ -57,11 +57,18 @@ it is forced and not before.
 
 | Angular | `engines.node` | Local 22.12.0 |
 |---|---|---|
-| 15 | `^14.20.0 \|\| ^16.13.0 \|\| >=18.10.0` | ✅ satisfies |
+| 15 | `^14.20.0 \|\| ^16.13.0 \|\| >=18.10.0` | ✅ satisfies `engines`, but see note |
 | 22 | `^22.22.3 \|\| ^24.15.0 \|\| >=26.0.0` | ❌ needs bump |
 
 `fnm` already has `v22.23.2` and `v24.18.0` installed, so it is a one-line
 `.node-version` change when the time comes.
+
+> ⚠️ **`engines` is not the whole story.** Angular 15 declares `>=18.10.0`, which
+> 22.12.0 satisfies, but `ng version` still prints
+> `Node: 22.12.0 (Unsupported)` — the CLI keeps its own list of *supported*
+> majors and 22 is newer than anything Angular 15 knew about. It is a **warning
+> only**: build, library build and tests all pass. Noted so a later failure is
+> not misattributed to it.
 
 ---
 
@@ -69,12 +76,95 @@ it is forced and not before.
 
 Recorded as they are offered. Nothing here has been applied.
 
-| Angular | Migration | Why deferred |
-|---|---|---|
-| _(none yet)_ | | |
+| Angular | Migration | How to run it later | Why deferred |
+|---|---|---|---|
+| 15 | `standalone-migration` (`@angular/core:standalone`) | `ng generate @angular/core:standalone` | Converts the app/library to standalone components. The 2.0.0 rewrite replaces the public API with `provideBloomsight()` and deletes the only component (CLI scaffolding), so running this now would convert code that is about to be removed. Do it as part of 2.0.0, not here. |
 
 ---
 
-## 14 → 15
+## 14 → 15 — ✅ done
 
-_In progress._
+**Result: clean. No `--force`, no code changes, no TypeScript errors.**
+
+### Commands
+
+```bash
+npx ng update @angular/cli@15 @angular/core@15
+```
+
+One command. It resolved without `--force`, which I had expected to fight over
+`zone.js`, `rxjs`, `typescript` and `ng-packagr`.
+
+**First attempt failed** — and not on dependencies:
+
+```
+Error: Repository is not clean. Please commit or stash any changes before updating.
+```
+
+`ng update` refuses to run against a dirty tree, and this log file was untracked.
+Committed the log first (`5adfea3`) rather than stashing, since it belongs on the
+branch anyway. Worth remembering for every remaining step: **commit before each
+`ng update`.**
+
+### What it changed
+
+| Package | 14 | 15 |
+|---|---|---|
+| `@angular/*` | 14.2/14.3 | 15.2.10 |
+| `@angular/cli` | 14.2.13 | 15.2.11 |
+| `@angular-devkit/build-angular` | ^14.2.13 | ^15.2.11 |
+| **`ng-packagr`** | ^14.2.0 | **^15.2.2** |
+| **`typescript`** | ~4.7.2 | **~4.9.5** |
+
+Two of those were on my task list as *manual* steps and turned out not to be:
+`ng update` bumped **`ng-packagr`** and **TypeScript** itself. TypeScript went
+straight to 4.9.5 rather than the 4.8.2 minimum Angular 15 requires.
+
+`zone.js ~0.11.4` and `rxjs ~7.5.0` were already inside Angular 15's peer ranges,
+so neither moved.
+
+### Automated migrations that ran
+
+| Migration | Effect |
+|---|---|
+| Remove default Browserslist config | `DELETE .browserslistrc` — it matched the CLI default |
+| Remove `require` calls in the Karma main file | `UPDATE src/test.ts`, `UPDATE projects/bloomscorp/ngx-bloomsight/src/test.ts` — the `require.context` block is handled by the builder now |
+| Set TS `target` / `useDefineForClassFields` | `tsconfig.json`: `target` `es2020` → `ES2022`, added `useDefineForClassFields: false` |
+| Remove `renderModule` from platform-server | no changes |
+| Remove unsupported `angular.json` options | no changes |
+| Remove `relativeLinkResolution` | no changes — not used |
+| `RouterLinkWithHref` → `RouterLink` | no changes — not used |
+
+### Errors fixed
+
+**None.** TypeScript 4.7 → 4.9 produced no errors, despite `strict`,
+`noPropertyAccessFromIndexSignature`, `noImplicitReturns` and `strictTemplates`
+all being on. The library is small and already strictly typed.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `npm run build-lib` | ✅ `Built @bloomscorp/ngx-bloomsight` |
+| `npm run build` (demo app) | ✅ 248.58 kB initial |
+| `ng test --watch=false --browsers=ChromeHeadless` | ✅ 3/3 and 2/2 — both projects |
+| `npm run check-version` | ✅ in sync at 1.6.0 |
+| Library `peerDependencies` | ✅ the B2 ranges survived untouched |
+
+The last one mattered: `ng update` rewrites `package.json` dependency ranges, and
+it could have clobbered the widened peer ranges from the B2 fix. It did not —
+it only touches the workspace `package.json`, not the library's.
+
+### Notes for later steps
+
+- Commit before every `ng update`; the clean-tree check is not negotiable.
+- Angular 15's CLI reports Node 22.12.0 as unsupported (warning only, see §Node).
+- The demo app still imports the library by **source path**, not package name, so
+  none of these builds exercised the published artifact. That is T2 in
+  MODERNISATION.md and still open.
+
+---
+
+## 15 → 16
+
+_Next._
