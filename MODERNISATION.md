@@ -248,9 +248,9 @@ revisit.
 
 | | Current | Target |
 |---|---|---|
-| **A1** | ⏳ Angular **20.3.33**, TypeScript 5.8.3, zone.js 0.15.1, rxjs 7.5 (was 14.2 / 4.7 / 0.11) | Angular 22 — see UPGRADE-LOG.md |
+| **A1** | ⏳ Angular **21.2.25**, TypeScript 5.9.3, zone.js 0.15.1, rxjs 7.5 (was 14.2 / 4.7 / 0.11) | Angular 22 — see UPGRADE-LOG.md |
 | **A2** | 🟡 **Half done.** `NgxBloomsightComponent` is `standalone: true` as of the 19 step, verified not to raise the published compatibility floor, and covered by tests on both consumption paths. Configuration is still module-only — see P5 | standalone-first, `provideBloomsight()` |
-| **A3** | No SSR guard | `isPlatformBrowser` — `init()` currently runs during server render |
+| **A3** | No SSR guard | `isPlatformBrowser` — `init()` currently runs during server render. **Also verify under zoneless:** Angular 21's `bootstrap-options-migration` added an explicit `provideZoneChangeDetection()` to the demo app, which shows the framework default is moving away from zones. Nothing in the library depends on change detection, but 2.0.0 should be tested under `provideExperimentalZonelessChangeDetection()` rather than assumed |
 | **A4** | Manual subscription handling | `takeUntilDestroyed` / `DestroyRef` |
 | **A5** | ✅ **Done** at the Angular 17 step by the `update-workspace-config` migration | `buildTarget` |
 | **A6** | `@angular-devkit/build-angular:browser` | `:application` (esbuild) |

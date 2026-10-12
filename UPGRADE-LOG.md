@@ -68,7 +68,7 @@ it is forced and not before.
 | 18 | `^18.19.1 \|\| ^20.11.1 \|\| >=22.0.0` | ✅ satisfies |
 | 19 | `^18.19.1 \|\| ^20.11.1 \|\| >=22.0.0` | ✅ satisfies |
 | 20 | `^20.19.0 \|\| ^22.12.0 \|\| >=24.0.0` | ⚠️ satisfies by **one patch** — `^22.12.0` and we run 22.12.0 exactly. **Verified at the 20 step: no warning, no failure** |
-| 21 | `^20.19.0 \|\| ^22.12.0 \|\| >=24.0.0` | ⚠️ same one-patch margin |
+| 21 | `^20.19.0 \|\| ^22.12.0 \|\| >=24.0.0` | ⚠️ same one-patch margin. **Verified at the 21 step: fine** |
 | 22 | `^22.22.3 \|\| ^24.15.0 \|\| >=26.0.0` | ❌ needs bump |
 
 `fnm` already has `v22.23.2` and `v24.18.0` installed, so it is a one-line
@@ -96,8 +96,10 @@ Recorded as they are offered. Nothing here has been applied.
 | 19 | `use-application-builder` (`@angular/cli`) | `ng update @angular/cli --migrate-only --name=use-application-builder` | Third offer, declined again. See the 18 entry — safe to defer indefinitely. |
 | 19 | `provide-initializer` (`@angular/core`) | `ng update @angular/core --migrate-only --name=provide-initializer` | Replaces `APP_INITIALIZER` / `ENVIRONMENT_INITIALIZER` / `PLATFORM_INITIALIZER` with `provideAppInitializer()` and friends. **A no-op today** — the repo uses none of those tokens. It becomes relevant *during* 2.0.0, which introduces an app initializer to fix B1/B7/B8: write that code with `provideAppInitializer()` from the start rather than the old token and a migration afterwards. |
 | 20 | `use-application-builder` (`@angular/cli`) | `ng update @angular/cli --migrate-only --name=use-application-builder` | Fourth offer, declined. |
-| 20 | `control-flow-migration` (`@angular/core`) | `ng update @angular/core --migrate-only --name=control-flow-migration` | Promoted from a `ng generate` schematic to a real optional migration at 20. Declined for the same reason as at 17: the only templates are the demo app's and the scaffolding component's, both deleted by 2.0.0 / the demo rebuild. |
+| 20 | `control-flow-migration` (`@angular/core`) | `ng update @angular/core --migrate-only --name=control-flow-migration` | Promoted from a `ng generate` schematic to a real optional migration at 20. Declined for the same reason as at 17. **No longer declinable — it became an automatic migration at 21 and ran.** |
 | 20 | `router-current-navigation` (`@angular/core`) | `ng update @angular/core --migrate-only --name=router-current-navigation` | Replaces `Router.getCurrentNavigation()` with the `Router.currentNavigation` signal. **A no-op here** — the library only subscribes to `NavigationEnd`. Noted so it is not mistaken for pending work. |
+| 21 | `use-application-builder` (`@angular/cli`) | `ng update @angular/cli --migrate-only --name=use-application-builder` | Fifth offer, declined. Still safe — the `browser` builder is present through 22. |
+| 21 | `router-current-navigation` (`@angular/core`) | `ng update @angular/core --migrate-only --name=router-current-navigation` | Offered again; still a no-op here. |
 
 ---
 
@@ -1048,18 +1050,164 @@ Library tests: **5 → 8**.
 
 ---
 
-## 20 → 21
+## 20 → 21 — ✅ done
 
-_Next._ From the forward map, plus what is now known:
+**Result: no `--force`, no TypeScript errors, library source untouched.** Three
+files changed, all in the demo app or workspace config.
 
-- **TypeScript**: 21 wants `>=5.9 <6.0`; we are on **5.8.3**, so this **will**
-  move, to 5.9.
-- **zone.js**: `~0.15.0 || ~0.16.0` — 0.15.1 already satisfies, so probably no
-  move.
-- **Node**: same one-patch margin as 20, which 20 proved fine.
-- **Karma survives.** Checked in `builders.json`: the `karma` builder is present
-  in build-angular 20, 21 **and 22**. (`web-test-runner` disappears at 22, but
-  this repo does not use it.) So `ng test` is not at risk during the climb,
-  and A7 in MODERNISATION.md stays a deliberate choice rather than a deadline.
-- Then **22**, which is the one with real teeth: **TypeScript 6.0** and the
-  **Node bump** (`^22.22.3 || ^24.15.0 || >=26.0.0` — 22.12.0 fails).
+### Pre-flight
+
+| Expectation | Outcome |
+|---|---|
+| TypeScript 5.8.3 → 5.9 (`>=5.9 <6.0`) | ✅ 5.9.3 |
+| zone.js stays (0.15.1 satisfies `~0.15.0 \|\| ~0.16.0`) | ✅ unchanged |
+| `control-flow-migration` is **automatic** at 21, so it cannot be declined | ✅ ran, demo template only |
+| `update-typescript-lib` will change `lib` | ⚠️ it **removed** `lib` rather than changing it — see below |
+| `bootstrap-options-migration` will be a no-op | ❌ **wrong, it fired** — see below |
+
+**Checked the blocker risk first.** The demo app's `main.ts` uses
+`platformBrowserDynamic().bootstrapModule()`, and if
+`@angular/platform-browser-dynamic` had been removed at 21 or 22, converting the
+demo app to `bootstrapApplication` would have become mandatory — dragging in the
+demo rework that is deliberately deferred. It is **deprecated but still
+published at both 21 and 22**, so no forced rework exists anywhere in this climb.
+
+### Commands
+
+```bash
+npx ng update @angular/cli@21 @angular/core@21
+```
+
+### What it changed
+
+| Package | 20 | 21 |
+|---|---|---|
+| `@angular/*` | 20.3.33 | 21.2.25 |
+| `@angular/cli`, `build-angular` | 20.3.39 | 21.2.26 |
+| `ng-packagr` | ^20.3.2 | ^21.2.7 |
+| **`typescript`** | ~5.8.3 | **~5.9.3** |
+| `zone.js` | ~0.15.1 | unchanged |
+
+### `lib` was removed, not updated
+
+The migration is described as *"Updates the `lib` property … to use `es2022` or
+a more modern version"*, but what it did was delete the property:
+
+```diff
+-    "lib": [
+-      "es2020",
+-      "dom"
+-    ],
+```
+
+TypeScript now derives `lib` from `target: "ES2022"`, which resolves to
+`lib.es2022.full` — ES2022 plus DOM, DOM.Iterable and ScriptHost. So the
+available types are the same set or broader, never narrower, and the explicit
+list was restating a default. Same shape of change as the `.browserslistrc`
+deletion at 15: configuration that only repeated what the target already implied.
+
+### `bootstrap-options-migration` fired — the interesting one
+
+Predicted as a no-op because `main.ts` passes no bootstrap options. It fired
+anyway:
+
+```diff
+-platformBrowserDynamic().bootstrapModule(AppModule)
++platformBrowserDynamic().bootstrapModule(AppModule,
++  { applicationProviders: [provideZoneChangeDetection()], })
+```
+
+The migration did not *move* an option — it **added** one. That is a signal
+worth recording: **Angular 21 is shifting the default away from zone-based
+change detection**, so an NgModule application now has to opt into it
+explicitly to keep its current behaviour.
+
+What it means for this library: nothing immediately. `BloomsightEventService`
+subscribes to router `NavigationEnd` events, which fire under zoneless change
+detection just as they do under zone-based, and the SDK calls it makes do not
+depend on change detection at all. But it does mean **2.0.0 should be verified
+under `provideExperimentalZonelessChangeDetection()`**, not just under zones —
+added to the A3/A4 thinking in MODERNISATION.md rather than treated as a climb
+issue.
+
+### Control flow migrated automatically
+
+`control-flow-migration` was optional at 17 and 20, and declined both times. At
+21 it is automatic. It rewrote `src/app/app.component.html`:
+
+- 5 × `*ngSwitchCase` and 1 × `*ngSwitchDefault` → `@switch` / `@case` /
+  `@default`
+- 313 insertions, 299 deletions — large because it reindented the whole
+  template, not because much changed semantically
+- zero `ngSwitch` references remain
+
+Allowed to stand rather than reverted. It only touches the demo app's
+scaffolding template, it is the framework's own tooling, and the file is
+scheduled for rebuild. Same reasoning as the standalone flag at 19.
+
+### Packaging: ng-packagr changed the layout a third time
+
+After 16 and 20. This one moves the types and adds a field:
+
+| Angular 20 | Angular 21 |
+|---|---|
+| `index.d.ts` at the root | `types/bloomscorp-ngx-bloomsight.d.ts` |
+| — | **`"type": "module"`** in the generated `package.json` |
+
+Verified both manifest pointers resolve to files that exist, since a dangling
+one would only surface for a consumer:
+
+```json
+"module":  "fesm2022/bloomscorp-ngx-bloomsight.mjs",        ✅
+"typings": "types/bloomscorp-ngx-bloomsight.d.ts",          ✅
+"type":    "module"
+```
+
+`"type": "module"` declares the package ESM-only. That is consistent with what
+it actually ships — a single `.mjs` bundle and nothing CommonJS — so it is a
+correction rather than a change in kind. Worth knowing because the file to grep
+for the P1 facade check **moved**: it is no longer `index.d.ts`.
+
+### The facade held
+
+Checked in the new location, because the P1 fix is only as good as the artifact:
+
+```ts
+import { IConfig, IBloomsightError } from '@bloomscorp/bloomsight.js';
+export type { BloomsightConfig, BloomsightEmailEngine, BloomsightError };
+```
+
+Root import, both aliases exported. No `dist/` path.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `npm run build-lib` | ✅ |
+| `npm run build` (demo app) | ✅ 285.40 kB (was 282.89 kB) — known CSS warning only |
+| `ng test` | ✅ 3/3 and 9/9 |
+| `npm run check-version` | ✅ 1.6.0 |
+| Library source | ✅ untouched |
+| Library `peerDependencies` | ✅ unchanged |
+| `minVersion` | ✅ still 14.0.0 |
+| Published manifest pointers | ✅ both resolve |
+| P1 facade in published types | ✅ root import only |
+
+---
+
+## 21 → 22 — the last step, and the one with teeth
+
+Two forced moves, both real:
+
+- **TypeScript 5.9.3 → 6.0** (`>=6.0 <6.1`). A major. The deprecated-flag
+  removals were already cleared at 17, and `moduleResolution` is already
+  `bundler` as of 20, so the two obvious hazards are gone — but a TypeScript
+  major deserves the same pre-flight audit that 5.x got at 17.
+- **Node must move.** 22 requires `^22.22.3 || ^24.15.0 || >=26.0.0` and we run
+  **22.12.0**, which fails. `fnm` already has `v22.23.2` and `v24.18.0`
+  installed, so this is a `.node-version` edit plus `fnm use` — but it is the
+  first environment change of the whole climb, and `.node-version` currently
+  says `v20`, which has been stale since the baseline.
+
+Also expected at 22: `web-test-runner` disappears from `builders.json`, though
+this repo does not use it. The `karma` and `browser` builders both survive.
