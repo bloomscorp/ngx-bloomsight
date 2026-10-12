@@ -1,15 +1,15 @@
 import {Inject, Injectable} from '@angular/core';
-import {init} from '@bloomscorp/bloomsight.js';
 import {IConfig} from '@bloomscorp/bloomsight.js/dist/configuration/interface/config';
 import {sendEmail as mail} from '@bloomscorp/bloomsight.js';
 import {BloomsightEmailEngine} from '../type/bloomsight-email-engine';
+import {initOnce} from '../internal/bloomsight-init';
 import type {EmailEngineTypeEnum} from '@bloomscorp/bloomsight.js/dist/email/enums/emailEngineTypeEnum';
 
 @Injectable()
 export class BloomsightMailService {
 
     init() {
-        init(this._config);
+        initOnce(this._config);
     }
 
     constructor(

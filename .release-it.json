@@ -1,9 +1,12 @@
 {
     "hooks": {
         "before:init": [
-            "git pull",
+            "git pull"
+        ],
+        "after:bump": [
+            "npm run sync-version",
             "npm run build-lib",
-            "git add --all"
+            "git add projects/bloomscorp/ngx-bloomsight/package.json"
         ]
     },
     "git": {
@@ -11,10 +14,11 @@
         "tagName": "v${version}",
         "requireBranch": "main",
         "requireUpstream": false,
-        "requireCleanWorkingDir": false
+        "requireCleanWorkingDir": true,
+        "push": true
     },
     "github": {
-        "release": true,
+        "release": false,
         "host": "github.com"
     },
     "npm": {
