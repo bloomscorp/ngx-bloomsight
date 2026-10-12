@@ -1350,6 +1350,45 @@ all no-ops.
 
 ---
 
+## Karma → Vitest — attempted at 22, blocked, deferred
+
+Decided to take it (rather than decline as with the other optional migrations),
+then ran it and found it **cannot run here yet**:
+
+```
+Project "ngx-bloomsight" cannot be migrated to Vitest yet. The project must
+first be migrated to use the "@angular/build:application" builder.
+
+Projects migrated: 0
+Projects skipped (non-applications): 1
+  - @bloomscorp/ngx-bloomsight
+Projects skipped (missing application builder): 1
+  - ngx-bloomsight
+```
+
+Two separate blockers, and the second is the more important one:
+
+1. **The demo app** needs the `@angular/build:application` builder first — the
+   `use-application-builder` migration declined at every step from 17 to 22.
+2. **The library is skipped entirely, as a "non-application".** The CLI's Vitest
+   migration only handles application projects, so it will **never** migrate the
+   library's tests no matter what else changes.
+
+Since **9 of the 12 tests live in the library**, taking this migration would
+have moved only the demo app's 3 and left two test runners in one workspace —
+while rewriting the build config of an app that is scheduled for replacement.
+
+**Deferred by decision** to the demo app rebuild, where the application builder
+is wanted anyway. No changes were made; the tree was clean afterwards. Karma
+remains fully supported on 22 (the `karma` builder is present in build-angular
+20, 21 and 22), so nothing is at risk, and it stays the safety net through the
+2.0.0 rewrite.
+
+**Recorded for whoever picks up A7:** getting the *library* off Karma is not a
+migration, it is bespoke configuration. The CLI will not do it.
+
+---
+
 ## The climb is complete — 14.3.0 → 22.2.2
 
 Nine majors, nine commits, **no `--force` at any step**.

@@ -248,13 +248,13 @@ revisit.
 
 | | Current | Target |
 |---|---|---|
-| **A1** | ⏳ Angular **21.2.25**, TypeScript 5.9.3, zone.js 0.15.1, rxjs 7.5 (was 14.2 / 4.7 / 0.11) | Angular 22 — see UPGRADE-LOG.md |
+| **A1** | ✅ **Done.** Angular **22.2.2**, TypeScript **6.0.3**, zone.js 0.15.1, Node 24.18.0 (was 14.2 / 4.7 / 0.11 / v20 pin). Nine majors, no `--force`, compatibility floor unmoved at 14.0.0 — see UPGRADE-LOG.md | — |
 | **A2** | 🟡 **Half done.** `NgxBloomsightComponent` is `standalone: true` as of the 19 step, verified not to raise the published compatibility floor, and covered by tests on both consumption paths. Configuration is still module-only — see P5 | standalone-first, `provideBloomsight()` |
 | **A3** | No SSR guard | `isPlatformBrowser` — `init()` currently runs during server render. **Also verify under zoneless:** Angular 21's `bootstrap-options-migration` added an explicit `provideZoneChangeDetection()` to the demo app, which shows the framework default is moving away from zones. Nothing in the library depends on change detection, but 2.0.0 should be tested under `provideExperimentalZonelessChangeDetection()` rather than assumed |
 | **A4** | Manual subscription handling | `takeUntilDestroyed` / `DestroyRef` |
 | **A5** | ✅ **Done** at the Angular 17 step by the `update-workspace-config` migration | `buildTarget` |
-| **A6** | `@angular-devkit/build-angular:browser` | `:application` (esbuild) |
-| **A7** | Karma | Karma is deprecated; pick the replacement deliberately. **Checked at the 20 step:** the `karma` builder is still present in build-angular 20, 21 and 22, so this is not a deadline imposed by the climb — it stays a free choice |
+| **A6** | `@angular-devkit/build-angular:browser` | `:application` (esbuild). Declined six times during the climb and **never became mandatory** — the `browser` builder is still present and un-deprecated at 22. Now has a second reason to happen: it is the prerequisite for Vitest (A7). Do both in the demo app rebuild |
+| **A7** | Karma | Karma is deprecated; pick the replacement deliberately. **Checked at 20:** the `karma` builder is present in build-angular 20, 21 and 22, so the climb imposes no deadline. **Attempted at 22 and blocked:** `migrate-karma-to-vitest` refuses until the demo app adopts `@angular/build:application`, and it **skips the library entirely as a non-application** — so the CLI will never migrate the library's 9 tests. Getting the library off Karma is bespoke configuration, not a migration. Deferred to the demo app rebuild, where the application builder is wanted anyway |
 | **A8** | No signals | signals where they earn their place |
 
 ---
