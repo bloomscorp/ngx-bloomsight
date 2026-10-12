@@ -14,3 +14,4 @@ export * from './lib/service/bloomsight-event.service';
 export * from './lib/service/bloomsight-mail.service';
 export * from './lib/type/bloomsight-email-engine';
 export * from './lib/type/bloomsight-config';
+export * from './lib/type/bloomsight-error';

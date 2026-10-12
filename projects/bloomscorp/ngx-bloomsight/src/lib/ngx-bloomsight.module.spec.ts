@@ -4,7 +4,11 @@ import { ModuleWithProviders } from '@angular/core';
 // consuming application would, and with no reference to
 // `@bloomscorp/bloomsight.js`. If this file ever needs a core import to
 // compile, the public API is incomplete again (P1).
-import { BloomsightConfig, NgxBloomsightModule } from '../public-api';
+import {
+  BloomsightConfig,
+  BloomsightError,
+  NgxBloomsightModule
+} from '../public-api';
 
 describe('NgxBloomsightModule.forRoot', () => {
 
@@ -45,5 +49,39 @@ describe('NgxBloomsightModule.forRoot', () => {
 
     expect(names).toContain('BloomsightEventService');
     expect(names).toContain('BloomsightMailService');
+  });
+
+  it('should let an app configure a blooms.ai migration without importing the core', () => {
+    // The real B2 cutover scenario, written the way a consuming project would
+    // write it — and deliberately using *every* field a migration touches,
+    // including a NAMED error handler, which is the case that needs the error
+    // type by name rather than by inference.
+    //
+    // The point of this test is what it does NOT import. If any of this ever
+    // requires reaching into '@bloomscorp/bloomsight.js', the public API has a
+    // hole in it. See P1.
+    const failures: BloomsightError[] = [];
+    function recordFailure(error: BloomsightError): void {
+      failures.push(error);
+    }
+
+    const migrated: BloomsightConfig = {
+      propertyToken: '65d72f0b5e990c6028790156',
+      isDevelopmentMode: false,
+      target: 'blooms-ai',
+      apiBase: 'https://z.bloomscorp.com',
+      debug: true,
+      onError: recordFailure
+    };
+
+    const configured = NgxBloomsightModule.forRoot(migrated);
+    const provider = (configured.providers ?? []).find(
+      (p: any) => p && p.provide === 'bloomsightConfig'
+    ) as { useValue: BloomsightConfig } | undefined;
+
+    expect(provider!.useValue.target).toBe('blooms-ai');
+    expect(provider!.useValue.apiBase).toBe('https://z.bloomscorp.com');
+    expect(provider!.useValue.onError).toBe(recordFailure);
+    expect(failures).toEqual([]);
   });
 });

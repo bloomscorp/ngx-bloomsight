@@ -208,6 +208,31 @@ revisit.
 
 ## 2. Packaging and API hygiene
 
+> ### The facade rule
+>
+> **Nothing in a consuming Angular app should ever import
+> `@bloomscorp/bloomsight.js`.** If it has to, `public-api.ts` is missing an
+> export, and that is the bug — not the app's code.
+>
+> Three different things get confused here, so to be explicit:
+>
+> | | Correct? |
+> |---|---|
+> | `ngx-bloomsight` **imports** the core | ✅ Yes — that is what a wrapper is |
+> | A consuming app **installs** the core | ✅ Unavoidable; it is a peer dependency, and installing is not coupling |
+> | A consuming app **imports** the core | ❌ The thing this rule prevents |
+>
+> When something is missing, the fix is almost always to **export or alias it
+> from this package** — not to release a new core. A core release is the last
+> resort, needed only when the core does not expose the thing at all, and even
+> then it can often be avoided (see the `Parameters<typeof sendEmail>[0]` trick
+> used for the email engine type).
+>
+> Applying this rule is what found the `BloomsightError` gap: `onError` in the
+> config takes a core type that this package was not re-exporting, so any app
+> with a named error handler would have been forced to import the core.
+
+
 | | Issue |
 |---|---|
 | **P1** | ✅ **Fixed 2026-10-12.** All five deep imports removed; every core import now goes through the package root, and the published `index.d.ts` no longer references `dist/`. Two halves: *inward*, four `IConfig` imports moved to the root (needs 0.8.0, so the core peer went `>=0.7.0` → `>=0.8.0`) and the fifth, `EmailEngineTypeEnum`, was eliminated entirely with `Parameters<typeof sendEmail>[0]` — deriving the parameter type from the root-exported function, so no core release was needed. *Outward*, `BloomsightConfig` is now exported from `public-api.ts`, so a consuming app never needs to import the core to type `forRoot()`. Guarded by `ngx-bloomsight.module.spec.ts`, which imports only from `../public-api` and fails to compile if the surface regresses. |
