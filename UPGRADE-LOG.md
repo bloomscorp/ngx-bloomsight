@@ -12,6 +12,11 @@
 
 1. **One major per commit.** Library source stays untouched during the climb; the
    2.0.0 API rewrite is a separate change on top.
+   > **Amended at 19.** Angular 19 made `standalone: true` the default, so the
+   > framework *requires* `standalone: false` on any `NgModule`-declared
+   > component. The library's scaffolding component had to change. The rule now
+   > reads: library source changes only when a major compels it, never for
+   > improvement — and each such change gets called out in its step's entry.
 2. **No `--force`.** If a step will not resolve, find the organic fix — bump the
    blocking package, align a peer, stage it as its own step. `--force` is the
    last resort and gets its own log entry explaining why nothing else worked.
@@ -88,6 +93,8 @@ Recorded as they are offered. Nothing here has been applied.
 | 17 | `use-application-builder` (`@angular/cli`) | `ng update @angular/cli --migrate-only --name=use-application-builder` | Swaps the webpack `browser` builder for the esbuild-based `application` builder. It rewrites `angular.json` build targets and changes how the **demo app** is bundled — it has no effect on the library, which is built by `ng-packagr`. Deferred because it is a build-system change in the middle of a nine-major climb: if a later version breaks, I want the builder to be a constant, not another variable. Revisit once the chain reaches 22, where this builder is the default anyway. |
 | 17 | `control-flow-migration` (`@angular/core`) | `ng generate @angular/core:control-flow` | Rewrites `*ngIf` / `*ngFor` / `*ngSwitch` as `@if` / `@for` / `@switch`. The only templates in the repo are the CLI-scaffolded demo app and the library's placeholder component, both of which the 2.0.0 rewrite deletes. Nothing to gain; same reasoning as `standalone-migration`. |
 | 18 | `use-application-builder` (`@angular/cli`) | `ng update @angular/cli --migrate-only --name=use-application-builder` | Offered again, declined again — and now known to be safe to defer indefinitely: the `browser` builder is still present in `@angular-devkit/build-angular` **19, 20, 21 and 22**, and is not even flagged deprecated at 22. See §Forward map. |
+| 19 | `use-application-builder` (`@angular/cli`) | `ng update @angular/cli --migrate-only --name=use-application-builder` | Third offer, declined again. See the 18 entry — safe to defer indefinitely. |
+| 19 | `provide-initializer` (`@angular/core`) | `ng update @angular/core --migrate-only --name=provide-initializer` | Replaces `APP_INITIALIZER` / `ENVIRONMENT_INITIALIZER` / `PLATFORM_INITIALIZER` with `provideAppInitializer()` and friends. **A no-op today** — the repo uses none of those tokens. It becomes relevant *during* 2.0.0, which introduces an app initializer to fix B1/B7/B8: write that code with `provideAppInitializer()` from the start rather than the old token and a migration afterwards. |
 
 ---
 
@@ -548,16 +555,148 @@ Also worth noting: Node 22.12.0 satisfies 20 and 21 by a **single patch version*
 
 ---
 
-## 18 → 19
+## 18 → 19 — ✅ done
 
-_Next, and the first step since 16 with forced dependency movement._
+**Result: no `--force`, no TypeScript errors — but the first step that modified
+source code, and the first that produced a new build warning.**
 
-- **TypeScript 5.4.5 → 5.8.x** (`>=5.5 <5.9`). Crosses 5.5, 5.6, 5.7, 5.8.
-  5.5 is where `moduleResolution: "node"` starts drawing attention, so watch for
-  a deprecation warning even if it still builds.
-- **zone.js 0.14.10 → 0.15.x** (`~0.15.0`).
-- Node is fine (`>=22.0.0`).
-- Angular 19 is the release that made standalone the default and deprecated a
-  batch of module-era APIs, so expect more migrations to actually fire than in
-  18 — the library still uses `NgModule`, which is exactly the shape 19 nudges
-  away from. It stays until 2.0.0 regardless.
+### Pre-flight
+
+Predicted before running, and all four predictions held:
+
+| Expectation | Outcome |
+|---|---|
+| `explicit-standalone-flag` will rewrite exactly two files | ✅ exactly those two |
+| TypeScript 5.4.5 → ~5.8 (`>=5.5 <5.9`) | ✅ 5.8.3 |
+| zone.js 0.14.10 → 0.15.x (`~0.15.0`) | ✅ 0.15.1 |
+| `minVersion` might rise and invalidate the peer range | ✅ checked — it did **not** |
+
+### Commands
+
+```bash
+npx ng update @angular/cli@19 @angular/core@19
+```
+
+### What it changed
+
+| Package | 18 | 19 |
+|---|---|---|
+| `@angular/*` | 18.2.14 | 19.2.25 |
+| `@angular/cli`, `build-angular` | 18.2.21 | 19.2.27 |
+| `ng-packagr` | ^18.2.1 | ^19.2.2 |
+| **`typescript`** | ~5.4.5 | **~5.8.3** |
+| **`zone.js`** | ~0.14.10 | **~0.15.1** |
+
+Both floors moved together for the first time since 16, and TypeScript crossed
+four minors in one step (5.5, 5.6, 5.7, 5.8).
+
+### Source changes — the first in the climb
+
+Angular 19 flipped the `standalone` default from `false` to `true`, so any
+component declared in an `NgModule` must now say so explicitly. The
+`explicit-standalone-flag` migration added `standalone: false` to:
+
+- `projects/bloomscorp/ngx-bloomsight/src/lib/ngx-bloomsight.component.ts` — the **library**
+- `src/app/app.component.ts` — the demo app
+
+Both are CLI scaffolding that the 2.0.0 rewrite deletes, so the change does not
+touch either real service. The ground rule "library source stays untouched
+during the climb" is now broken, but by the framework's requirement rather than
+by choice, and in a file already marked for deletion.
+
+**Cosmetic side effect, left as-is:** the schematic's TypeScript printer
+reformatted both decorator object literals — 2-space to 4-space indentation, and
+`styles: [\n  ]` collapsed to `styles: []`. The semantic change is one line per
+file; the rest is the printer. Not hand-corrected, because fighting the printer
+after every migration costs more than it saves and both files are scheduled for
+deletion.
+
+### The `minVersion` check — the one that mattered
+
+The concern going in: `standalone: false` becomes part of the library's **partial
+declarations**, which older Angular linkers must parse. If that raised the floor,
+the published `>=14.2.0 <23.0.0` peer range would have become a lie.
+
+It did not. From the built output:
+
+```
+ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "19.2.25",
+                       type: NgxBloomsightComponent, isStandalone: false, ... })
+```
+
+`isStandalone: false` is emitted, and the compiler still declares a 14.0.0 floor
+alongside it — `isStandalone` has been part of the partial-declaration schema
+since Angular 14, and `false` is merely the pre-19 default made explicit. Totals
+unchanged: `minVersion 12.0.0` x14, `14.0.0` x2.
+
+### `moduleResolution: "node"` — still dormant at TypeScript 5.8
+
+Checked deliberately rather than inferred from a zero exit code:
+
+```bash
+npx tsc -p projects/bloomscorp/ngx-bloomsight/tsconfig.lib.prod.json --noEmit
+# exit 0, no output, TS 5.8.3
+```
+
+No deprecation warning at 5.8. So the forcing point, if it comes, is
+**TypeScript 6.0 at Angular 22** — consistent with the forward map.
+
+### New build warning — a tripwire worth knowing about
+
+The demo app build now emits:
+
+```
+Warning: src/app/app.component.html-angular-inline--1.css exceeded maximum
+budget. Budget 2.00 kB was not met by 1.78 kB with a total of 3.78 kB.
+```
+
+**Cause:** `src/app/app.component.html` — the stock Angular welcome page — carries
+a single inline `<style>` block of 5,274 bytes. Angular 19 began extracting
+inline *template* styles into their own CSS assets, which brings them under the
+`anyComponentStyle` budget in `angular.json` (2 kB warning, **4 kB error**).
+Nothing in the repo changed; the build's accounting did.
+
+**Why it is being left alone:** it is a warning, it concerns the demo app only,
+and the demo app is scheduled for replacement anyway (T2 in MODERNISATION.md).
+
+**Why it is still worth logging:** at 3.78 kB it sits **0.22 kB below the hard
+error ceiling**. If a later major changes extraction or minification even
+slightly, this becomes a failing build rather than a warning — and the cause
+would be very easy to misattribute to that major. If it trips, the fix is to
+raise `anyComponentStyle` in `angular.json` or to delete the scaffolded welcome
+page; neither needs to happen now.
+
+### Errors fixed
+
+**None.** TypeScript 5.4 → 5.8 produced no errors, and `@types/jasmine@~4.0.0`
+compiled cleanly against 5.8 despite being four majors behind — a risk flagged
+before the step that did not materialise.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `npm run build-lib` | ✅ 4.5s, no warnings |
+| `npm run build` (demo app) | ✅ 274.69 kB initial (was 273.80 kB) — with the CSS budget warning above |
+| `ng test --watch=false --browsers=ChromeHeadless` | ✅ 3/3 and 2/2 |
+| `npm run check-version` | ✅ in sync at 1.6.0 |
+| Library `peerDependencies` | ✅ `git diff` empty |
+| **`minVersion`** | ✅ **still 14.0.0** |
+| `tsc --noEmit` on the library | ✅ exit 0, no deprecations |
+
+---
+
+## 19 → 20
+
+_Next._ From the forward map:
+
+- **TypeScript 5.8.3 → 5.9** (`>=5.8 <6.0`). Our 5.8.3 already satisfies the
+  floor, so this may not move at all — or move to 5.9 as the newest in range.
+- **zone.js stays** (`~0.15.0`, we have 0.15.1).
+- **Node is the thing to watch.** 20 requires
+  `^20.19.0 || ^22.12.0 || >=24.0.0` and we run **22.12.0 exactly** — satisfied
+  by a single patch version, the tightest margin in the chain. If anything
+  behaves oddly at 20, check Node before anything else.
+- Angular 20 is a large release for deprecation removal, so expect more
+  migrations to fire than at 19. The `NgModule` the library still ships is the
+  obvious exposure, though modules remain supported.
