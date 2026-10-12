@@ -59,6 +59,8 @@ it is forced and not before.
 |---|---|---|
 | 15 | `^14.20.0 \|\| ^16.13.0 \|\| >=18.10.0` | ✅ satisfies `engines`, but see note |
 | 16 | `^16.14.0 \|\| >=18.10.0` | ✅ satisfies |
+| 17 | `^18.13.0 \|\| >=20.9.0` | ✅ satisfies, and no "Unsupported" warning |
+| 18 | `^18.19.1 \|\| ^20.11.1 \|\| >=22.0.0` | ✅ satisfies |
 | 22 | `^22.22.3 \|\| ^24.15.0 \|\| >=26.0.0` | ❌ needs bump |
 
 `fnm` already has `v22.23.2` and `v24.18.0` installed, so it is a one-line
@@ -80,6 +82,8 @@ Recorded as they are offered. Nothing here has been applied.
 | Angular | Migration | How to run it later | Why deferred |
 |---|---|---|---|
 | 15 | `standalone-migration` (`@angular/core:standalone`) | `ng generate @angular/core:standalone` | Converts the app/library to standalone components. The 2.0.0 rewrite replaces the public API with `provideBloomsight()` and deletes the only component (CLI scaffolding), so running this now would convert code that is about to be removed. Do it as part of 2.0.0, not here. |
+| 17 | `use-application-builder` (`@angular/cli`) | `ng update @angular/cli --migrate-only --name=use-application-builder` | Swaps the webpack `browser` builder for the esbuild-based `application` builder. It rewrites `angular.json` build targets and changes how the **demo app** is bundled — it has no effect on the library, which is built by `ng-packagr`. Deferred because it is a build-system change in the middle of a nine-major climb: if a later version breaks, I want the builder to be a constant, not another variable. Revisit once the chain reaches 22, where this builder is the default anyway. |
+| 17 | `control-flow-migration` (`@angular/core`) | `ng generate @angular/core:control-flow` | Rewrites `*ngIf` / `*ngFor` / `*ngSwitch` as `@if` / `@for` / `@switch`. The only templates in the repo are the CLI-scaffolded demo app and the library's placeholder component, both of which the 2.0.0 rewrite deletes. Nothing to gain; same reasoning as `standalone-migration`. |
 
 ---
 
@@ -276,8 +280,160 @@ installing the built tarball into a real old app rather than reasoning about it.
 
 ---
 
-## 16 → 17
+## 16 → 17 — ✅ done
 
-_Next._ Expect the TypeScript jump (16 allows `<5.2`, 17 requires `>=5.2`), and
-this is the version where the `browserTarget` → `buildTarget` rename and the
-optional application-builder migration arrive.
+**Result: clean. No `--force`, no code changes to the library, no TypeScript errors.**
+
+This was the step expected to involve real work, because it carries the first
+genuine TypeScript major in the chain. It did not, and the reason is worth
+recording: a migration two majors earlier had already defused it.
+
+### Pre-flight: TypeScript 5 exposure, audited before running anything
+
+TypeScript went from 4.9 to 5.x here. Rather than run the update and read the
+error wall, each TS 5.0 breaking change was checked against this workspace
+first:
+
+| TS 5 breaking change | Exposure here | Why |
+|---|---|---|
+| Standard (ES) decorators replace experimental ones | **None** | `experimentalDecorators: true` is set, so Angular's legacy decorator semantics still apply |
+| `useDefineForClassFields` defaults to `true` for ES2022 targets | **None** | Already pinned to `false` in `tsconfig.json` |
+| Deprecated flags removed (`importsNotUsedAsValues`, `preserveValueImports`, `suppressImplicitAnyIndexErrors`, …) | **None** | Grepped every `tsconfig*.json`; none present |
+| Enum unification — all enums become union enums | **None** | The only enum in play is `EmailEngineTypeEnum`, imported `import type` and bridged with `as unknown as`. A double cast is indifferent to enum relationships |
+
+The second row is the interesting one. `useDefineForClassFields: false` was
+written into `tsconfig.json` by the **Angular 15** migration
+("Set TS `target` / `useDefineForClassFields`"). With `target: ES2022` and TS 5
+flipping that default to `true`, class fields would have been emitted as
+`defineProperty` rather than assignments — which breaks Angular's
+`@Input`/`@Output` initialisation. **A migration from two majors ago is what
+made this one quiet.** It is a concrete argument for the incremental climb over
+regenerating the workspace: the chain carries forward fixes whose necessity only
+becomes visible later.
+
+### Commands
+
+```bash
+npx ng update @angular/cli@17 @angular/core@17
+```
+
+Local CLI was 16, so it bootstrapped a temporary 17.3.17. Resolved without
+`--force`.
+
+### What it changed
+
+| Package | 16 | 17 |
+|---|---|---|
+| `@angular/*` | 16.2.12 | 17.3.12 |
+| `@angular/cli`, `build-angular` | 16.2.16 | 17.3.17 |
+| `ng-packagr` | ^16.2.3 | ^17.3.0 |
+| **`typescript`** | ~4.9.5 | **~5.4.5** |
+| **`zone.js`** | 0.13.3 | **0.14.10** |
+| `rxjs` | ~7.5.0 | unchanged (17 peers `^6.5.3 \|\| ^7.4.0`) |
+
+**TypeScript landed on 5.4.5, not the 5.2 minimum.** `build-angular@17.3.17`
+peers on `typescript >=5.2 <5.5`, and `ng update` takes the newest version in
+range — so this single step crossed 5.0, 5.1, 5.2, 5.3 and 5.4. Worth knowing
+when reading the next steps: Angular 18 requires `>=5.4`, which is **already
+satisfied**, so 17 → 18 should not move TypeScript at all.
+
+`zone.js` was the forced move again — `@angular/core@17` peers `~0.14.0`.
+
+### Automated migrations that ran
+
+Eight in total. Two made changes:
+
+| Migration | Effect |
+|---|---|
+| Replace deprecated options in `angular.json` | **`browserTarget` → `buildTarget`**, 3 occurrences: `serve.production`, `serve.development`, `extract-i18n` |
+| Escape `@` and `}` for the new control-flow syntax | `src/app/app.component.html` — two literal `@angular/...` strings inside `<pre>` became `&#64;angular/...` |
+
+The second is not cosmetic. From Angular 17 the template parser treats `@` as
+the start of a control-flow block, so an unescaped literal `@` in a template is
+a syntax error. The two occurrences were in the stock demo app's "ng add"
+examples.
+
+No-ops: `@nguniversal/builders` → `@angular-devkit/build-angular`,
+`@nguniversal/*` → `@angular/ssr`, `browser-sync` dev dependency,
+`TransferState` import move, `CompilerOption.useJit`/`missingTranslation`
+removal, and invalid two-way binding longform.
+
+### Errors fixed
+
+**None.** TypeScript 4.9 → 5.4 produced no errors under `strict`,
+`noPropertyAccessFromIndexSignature`, `noImplicitReturns` and `strictTemplates`.
+
+### Optional migrations
+
+`ng update` **did not print an optional-migration notice** this time, which
+could easily be misread as "there are none". There is one — it was found by
+reading the installed collections directly:
+
+```bash
+node -e "const c=require('./node_modules/@schematics/angular/migrations/migration-collection.json'); \
+  for(const [k,v] of Object.entries(c.schematics)) if(v.optional) console.log(k)"
+```
+
+`use-application-builder`. Plus `control-flow-migration`, which is a
+`ng generate` schematic in `@angular/core/schematics/collection.json` rather
+than a migration. Both are recorded in §Optional migrations and **declined**.
+
+**Check the collections directly at every remaining step** rather than trusting
+the console to advertise them.
+
+### Compatibility floor
+
+Unchanged by this step:
+
+```
+minVersion: "12.0.0"   (x14)
+minVersion: "14.0.0"   (x2)
+version:    "17.3.12"  (x16)
+```
+
+Still 14, so the `>=14.2.0 <23.0.0` peer range continues to hold. The dist
+layout is also unchanged from 16 (`esm2022/` + `fesm2022/`), so the ES2022
+loose end noted there is not made worse.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `npm run build-lib` | ✅ `Built @bloomscorp/ngx-bloomsight` |
+| `npm run build` (demo app) | ✅ 261.07 kB initial (was 255.03 kB) |
+| `ng test --watch=false --browsers=ChromeHeadless` | ✅ 3/3 and 2/2 |
+| `npm run check-version` | ✅ in sync at 1.6.0 |
+| Library `peerDependencies` | ✅ untouched — `git diff` on the library `package.json` is empty |
+| `minVersion` in built output | ✅ still 14.0.0 |
+
+### Notes for later steps
+
+- Node 22.12.0 satisfies 17's `^18.13.0 || >=20.9.0`, and CLI 17 did **not**
+  print the "Unsupported" warning that 15 did. The `.node-version` bump is
+  still deferred to whichever step forces it (see §Node).
+- `moduleResolution: "node"` is still in `tsconfig.json`. TS 5.x accepts it but
+  treats it as legacy (`node10`); it is expected to warn and eventually error in
+  a later TypeScript. Since the remaining Angular majors carry TS 5.5 → 6.x,
+  **this is the most likely source of a required intermediate fix.** Change to
+  `bundler` or `node16` only when something actually demands it.
+
+---
+
+## 17 → 18
+
+_Next._ Requirements checked against the registry ahead of time:
+
+| | Angular 18 requires | Current | Moves? |
+|---|---|---|---|
+| `typescript` | `>=5.4 <5.6` | 5.4.5 | **no** |
+| `zone.js` | `~0.14.10` | 0.14.10 | **no** |
+| `rxjs` | `^6.5.3 \|\| ^7.4.0` | 7.5.0 | no |
+| Node | `^18.19.1 \|\| ^20.11.1 \|\| >=22.0.0` | 22.12.0 | no |
+
+So 18 should be the lightest step in the chain — nothing in the dependency
+floor has to move, because 17 overshot TypeScript to 5.4.5. What is left is
+whatever the migrations rewrite, plus the removal of APIs deprecated in 17.
+
+18 is also where the application builder becomes the default for new projects,
+so re-read the `use-application-builder` decision if the demo app build
+misbehaves.
