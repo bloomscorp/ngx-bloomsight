@@ -201,35 +201,71 @@ The point of the rewrite: each of these needs a visible, clickable surface.
 
 ---
 
-## 4. Vitest in, Karma out
+## 4. Vitest in, Karma out — 🟡 spike done, blocked on one dependency
 
-**The CLI schematic will not do this.** `migrate-karma-to-vitest` refuses: the
-demo app needs the `@angular/build:application` builder first, and the library is
-skipped outright as a "non-application".
+**The spike's question is answered: `@angular/build:unit-test` does drive a
+library project.** The `migrate-karma-to-vitest` schematic's refusal
+("skipped — non-application") is a limitation of the *schematic*, not the
+builder. Wired by hand into `angular.json`, Vitest 4.1.11 ran, discovered all
+three spec files and executed them.
 
-The path found instead: **`@angular/build:unit-test`** exists as a builder, peers
-on `vitest ^4.0.8 || ^5.0.0`, and its schema has `required: []` — nothing
-mandatory, including `buildTarget`.
+- [x] Spike: `@angular/build:unit-test` with `runner: vitest` on the library
+- [x] Install `@angular/build`, `vitest`, `jsdom` (the builder requires a DOM
+      environment and names `jsdom` or `happy-dom`)
+- [x] **Library build target moved to `@angular/build:ng-packagr`.** The
+      unit-test builder warns that `@angular-devkit/build-angular:ng-packagr`
+      "is not supported"; the `@angular/build` equivalent is. Verified the
+      library still builds, and the warning is gone. Kept — it is a clean
+      improvement regardless of the runner
+- [ ] **Blocked:** fix `bmx-pastebox` (see below), then flip the test target
+- [ ] Remove `karma`, `karma-*`, `jasmine-core`, `@types/jasmine`,
+      `istanbul-lib-instrument`; delete both `karma.conf.js` and both
+      `src/test.ts`
+- [ ] Coverage thresholds
+- [ ] Adopt `@angular/build:application` for the demo app (**A6**)
 
-- [ ] **Spike first:** wire `@angular/build:unit-test` with `runner: vitest` into
-      the **library** project in `angular.json` and confirm it runs. This is the
-      one genuinely unproven step in this plan
-- [ ] Fallback if it will not drive a library project: run Vitest directly with
-      its own config and an Angular JIT test setup, outside `ng test`
-- [ ] Adopt `@angular/build:application` for the demo app — needed for its tests,
-      and now wanted anyway (**A6**, declined six times during the climb and
-      never forced)
-- [ ] Install `@angular/build`, `vitest`
-- [ ] Remove: `karma`, `karma-chrome-launcher`, `karma-coverage`,
-      `karma-jasmine`, `karma-jasmine-html-reporter`, `jasmine-core`,
-      `@types/jasmine`, `istanbul-lib-instrument` (added by the 22 migration for
-      Karma coverage only)
-- [ ] Delete `karma.conf.js` and `projects/bloomscorp/ngx-bloomsight/karma.conf.js`
-- [ ] Delete both `src/test.ts` entry points if the new runner does not need them
-- [ ] Coverage thresholds configured and enforced
-- [ ] `grep -ri karma` returns nothing but historical log entries
+### The blocker — and it is ours
 
----
+Two of the three suites fail, and not because of the builder or the library:
+
+```
+Error: Cannot find module '…/node_modules/bmx-pastebox/dist/pastebox'
+       imported from …/node_modules/bmx-pastebox/dist/index.js
+```
+
+`bmx-pastebox@1.0.14` is a **Bloomscorp package** (authored
+`debabrata@bloomscorp.com`) and a transitive dependency of
+`@bloomscorp/bloomsight.js`. It is malformed:
+
+- `main` is `dist/index.js`, whose entire content is
+  `export * from './pastebox';`
+- that is **ESM syntax** in a package with **no `"type": "module"`**, no
+  `exports` map and no `module` field
+- and the specifier is **extensionless**, which is invalid ESM
+
+Webpack tolerated both, which is why Karma never complained for years. Vite and
+Node do not. Any consumer on native-ESM tooling hits this today — it is not a
+test-only problem, it was merely invisible until something stopped being lenient.
+
+**Tried and rejected:** `test.server.deps.inline` in a `runnerConfig` vitest
+config. Resolution fails before Vite can transform the package, so the
+workaround does not help. Removed rather than left in place looking like it does.
+
+**The right fix is to delete the dependency.** `bloomsight.js` imports exactly
+**one** function from it — `isEmptyString`, in `src/transmission/transmission.ts`
+— and it is a two-line predicate:
+
+```js
+export function isEmptyString(str) {
+	return valueExists(str) && (str.trim() === '' || str.trim().length === 0);
+}
+```
+
+Inlining that removes a runtime dependency from a browser SDK and fixes the
+hazard for **every** consumer rather than papering over it for one test run.
+Needs a core patch release after 0.9.0.
+
+Until then the library stays on Karma, so the branch is green at every commit.
 
 ## 5. Tests — close T1 properly
 
@@ -312,7 +348,7 @@ Mirror what `bloomsight.js` ended up with; it has already been through this.
 
 1. ~~D1–D7 answered~~ ✅ settled 2026-10-12 (§0)
 2. ~~Core 0.9.0 (P6)~~ ✅ code done (`55ece65`); **release pending push/publish**
-3. Vitest spike — the unproven step; know early whether the fallback is needed
+3. ~~Vitest spike~~ ✅ builder works on a library; **blocked on dropping `bmx-pastebox` from the core** (§4)
 4. Library API rewrite, with tests written alongside
 5. Demo app rewrite against the built package
 6. CI + release pipeline
