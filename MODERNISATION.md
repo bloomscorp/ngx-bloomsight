@@ -210,7 +210,7 @@ revisit.
 
 | | Issue |
 |---|---|
-| **P1** | Deep imports — `@bloomscorp/bloomsight.js/dist/configuration/interface/config` — and they **leak into the published `.d.ts`**. The core now exports `IConfig` from its root; this breaks the day the core adds an `exports` map. |
+| **P1** | 🔺 **Raised in severity at Angular 20.** Deep imports — `@bloomscorp/bloomsight.js/dist/configuration/interface/config`, in 5 source files — and they **leak into the published `.d.ts`** (line 3 of the generated `index.d.ts`). From Angular 20 the CLI puts consumers on `moduleResolution: "bundler"`, which resolves through `exports` maps, so that line is resolved by the *consumer's* TypeScript against *their* copy of the core. It works only because the core ships no `exports` map (verified in 0.7.0 and 0.8.0). When the core adds one, every consumer's build breaks inside **our** `.d.ts` rather than their own code. **Fix:** import `IConfig` from the core root — but only **0.8.0** exports it from root (0.7.0 does not), so this requires raising the core peer from `>=0.7.0` to `>=0.8.0`. Justified, and consistent with the migration plan where every project moves to `^0.8.0` anyway. Needs its own commit and a decision. |
 | **P2** | CLI scaffolding is public API: `NgxBloomsightComponent` renders *"ngx-bloomsight works!"*, `NgxBloomsightService` is an empty class. Both exported from `public-api.ts`. Still true — the component was made **standalone** at the Angular 19 step, but standalone scaffolding is still scaffolding. Delete both at 2.0.0. |
 | **P3** | `@Inject('bloomsightConfig')` — a **string** token. No type safety, and it collides with anything else using that string. |
 | **P4** | `sendMail()` takes seven positional arguments including `templateOwnerId` (an internal), plus success/error callbacks rather than an `Observable`. |
@@ -223,13 +223,13 @@ revisit.
 
 | | Current | Target |
 |---|---|---|
-| **A1** | ⏳ Angular **19.2.25**, TypeScript 5.8.3, zone.js 0.15.1, rxjs 7.5 (was 14.2 / 4.7 / 0.11) | Angular 22 — see UPGRADE-LOG.md |
+| **A1** | ⏳ Angular **20.3.33**, TypeScript 5.8.3, zone.js 0.15.1, rxjs 7.5 (was 14.2 / 4.7 / 0.11) | Angular 22 — see UPGRADE-LOG.md |
 | **A2** | 🟡 **Half done.** `NgxBloomsightComponent` is `standalone: true` as of the 19 step, verified not to raise the published compatibility floor, and covered by tests on both consumption paths. Configuration is still module-only — see P5 | standalone-first, `provideBloomsight()` |
 | **A3** | No SSR guard | `isPlatformBrowser` — `init()` currently runs during server render |
 | **A4** | Manual subscription handling | `takeUntilDestroyed` / `DestroyRef` |
 | **A5** | ✅ **Done** at the Angular 17 step by the `update-workspace-config` migration | `buildTarget` |
 | **A6** | `@angular-devkit/build-angular:browser` | `:application` (esbuild) |
-| **A7** | Karma | Karma is deprecated; pick the replacement deliberately |
+| **A7** | Karma | Karma is deprecated; pick the replacement deliberately. **Checked at the 20 step:** the `karma` builder is still present in build-angular 20, 21 and 22, so this is not a deadline imposed by the climb — it stays a free choice |
 | **A8** | No signals | signals where they earn their place |
 
 ---

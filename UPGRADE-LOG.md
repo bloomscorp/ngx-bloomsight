@@ -67,7 +67,7 @@ it is forced and not before.
 | 17 | `^18.13.0 \|\| >=20.9.0` | ✅ satisfies, and no "Unsupported" warning |
 | 18 | `^18.19.1 \|\| ^20.11.1 \|\| >=22.0.0` | ✅ satisfies |
 | 19 | `^18.19.1 \|\| ^20.11.1 \|\| >=22.0.0` | ✅ satisfies |
-| 20 | `^20.19.0 \|\| ^22.12.0 \|\| >=24.0.0` | ⚠️ satisfies by **one patch** — `^22.12.0` and we run 22.12.0 exactly |
+| 20 | `^20.19.0 \|\| ^22.12.0 \|\| >=24.0.0` | ⚠️ satisfies by **one patch** — `^22.12.0` and we run 22.12.0 exactly. **Verified at the 20 step: no warning, no failure** |
 | 21 | `^20.19.0 \|\| ^22.12.0 \|\| >=24.0.0` | ⚠️ same one-patch margin |
 | 22 | `^22.22.3 \|\| ^24.15.0 \|\| >=26.0.0` | ❌ needs bump |
 
@@ -95,6 +95,9 @@ Recorded as they are offered. Nothing here has been applied.
 | 18 | `use-application-builder` (`@angular/cli`) | `ng update @angular/cli --migrate-only --name=use-application-builder` | Offered again, declined again — and now known to be safe to defer indefinitely: the `browser` builder is still present in `@angular-devkit/build-angular` **19, 20, 21 and 22**, and is not even flagged deprecated at 22. See §Forward map. |
 | 19 | `use-application-builder` (`@angular/cli`) | `ng update @angular/cli --migrate-only --name=use-application-builder` | Third offer, declined again. See the 18 entry — safe to defer indefinitely. |
 | 19 | `provide-initializer` (`@angular/core`) | `ng update @angular/core --migrate-only --name=provide-initializer` | Replaces `APP_INITIALIZER` / `ENVIRONMENT_INITIALIZER` / `PLATFORM_INITIALIZER` with `provideAppInitializer()` and friends. **A no-op today** — the repo uses none of those tokens. It becomes relevant *during* 2.0.0, which introduces an app initializer to fix B1/B7/B8: write that code with `provideAppInitializer()` from the start rather than the old token and a migration afterwards. |
+| 20 | `use-application-builder` (`@angular/cli`) | `ng update @angular/cli --migrate-only --name=use-application-builder` | Fourth offer, declined. |
+| 20 | `control-flow-migration` (`@angular/core`) | `ng update @angular/core --migrate-only --name=control-flow-migration` | Promoted from a `ng generate` schematic to a real optional migration at 20. Declined for the same reason as at 17: the only templates are the demo app's and the scaffolding component's, both deleted by 2.0.0 / the demo rebuild. |
+| 20 | `router-current-navigation` (`@angular/core`) | `ng update @angular/core --migrate-only --name=router-current-navigation` | Replaces `Router.getCurrentNavigation()` with the `Router.currentNavigation` signal. **A no-op here** — the library only subscribes to `NavigationEnd`. Noted so it is not mistaken for pending work. |
 
 ---
 
@@ -788,17 +791,153 @@ All green: library 5/5, demo app 3/3.
 
 ---
 
-## 19 → 20
+## 19 → 20 — ✅ done
 
-_Next._ From the forward map:
+**Result: no `--force`, no source changes, no TypeScript errors.** The second
+step in a row where no dependency floor moved — only configuration did.
 
-- **TypeScript 5.8.3 → 5.9** (`>=5.8 <6.0`). Our 5.8.3 already satisfies the
-  floor, so this may not move at all — or move to 5.9 as the newest in range.
-- **zone.js stays** (`~0.15.0`, we have 0.15.1).
-- **Node is the thing to watch.** 20 requires
-  `^20.19.0 || ^22.12.0 || >=24.0.0` and we run **22.12.0 exactly** — satisfied
-  by a single patch version, the tightest margin in the chain. If anything
-  behaves oddly at 20, check Node before anything else.
-- Angular 20 is a large release for deprecation removal, so expect more
-  migrations to fire than at 19. The `NgModule` the library still ships is the
-  obvious exposure, though modules remain supported.
+### Pre-flight, and how the three predicted caveats turned out
+
+| Caveat raised before running | Outcome |
+|---|---|
+| **Node margin.** 20 wants `^20.19.0 \|\| ^22.12.0 \|\| >=24.0.0`; we run 22.12.0 **exactly** — one patch of headroom | ✅ No warning, no failure. Held |
+| **`update-module-resolution`** will rewrite `moduleResolution: "node"` → `"bundler"`, which honours `exports` maps and could break the five deep imports into the core | ✅ Probed *before* running with a throwaway tsconfig: `tsc --noEmit` exit 0, zero diagnostics. Landed clean |
+| **`remove-default-karma-config`** may delete both `karma.conf.js` files while `angular.json` still references them via `karmaConfig`, breaking `ng test` | ✅ Did not fire — "No changes made". The two configs are 44 lines but are *not* byte-identical to stock, so they were left alone |
+
+Probing the `bundler` change beforehand was worth the five minutes: it turned the
+riskiest migration in the step into a known quantity rather than something to
+debug afterwards.
+
+> **Correction to an earlier prediction.** At 17 and 19 this log said
+> `moduleResolution: "node"` would most likely be forced by **TypeScript 6 at
+> Angular 22**. Wrong on both the version and the mechanism: it is handled at
+> **20**, automatically, by a CLI migration. Nothing had to be fixed by hand.
+
+### Commands
+
+```bash
+npx ng update @angular/cli@20 @angular/core@20
+```
+
+### What it changed
+
+| Package | 19 | 20 |
+|---|---|---|
+| `@angular/*` | 19.2.25 | 20.3.33 |
+| `@angular/cli`, `build-angular` | 19.2.27 | 20.3.39 |
+| `ng-packagr` | ^19.2.2 | ^20.3.2 |
+| `typescript` | ~5.8.3 | **unchanged** (20 wants `>=5.8 <6.0`) |
+| `zone.js` | ~0.15.1 | **unchanged** (`~0.15.0`) |
+
+Two config files, no source:
+
+- **`tsconfig.json`** — `moduleResolution: "node"` → `"bundler"`.
+- **`angular.json`** — a `schematics` block was added by `previous-style-guide`,
+  pinning the old file-naming convention (`foo.component.ts` rather than
+  Angular 20's new `foo.ts`) for future `ng generate`. Affects generation only,
+  nothing already in the repo.
+
+### Automated migrations
+
+All four `@angular/core` migrations were no-ops — `document-core` (no `DOCUMENT`
+usage), `inject-flags` (no `InjectFlags`), `test-bed-get` (no `TestBed.get`),
+and the SSR bootstrap one. Of the CLI's, two SSR migrations no-op'd and
+`remove-default-karma-config` made no changes.
+
+### Packaging: ng-packagr changed the dist layout again
+
+Second time in the climb, after 16. Comparing the built output:
+
+| Angular 19 | Angular 20 |
+|---|---|
+| `esm2022/`, `fesm2022/`, `lib/`, `index.d.ts`, `public-api.d.ts` | `fesm2022/`, `index.d.ts` |
+
+So the unflattened `esm2022/` tree is gone, and the per-file `.d.ts` tree
+(`lib/` + `public-api.d.ts`) is **flattened into a single 87-line
+`index.d.ts`**.
+
+Checked that the manifest still points at files that exist, since a dangling
+pointer here would only surface for a consumer:
+
+```json
+"module":   "fesm2022/bloomscorp-ngx-bloomsight.mjs",   ✅ exists
+"typings":  "index.d.ts",                               ✅ exists
+"exports":  { ".": { "types": "./index.d.ts",
+                     "default": "./fesm2022/bloomscorp-ngx-bloomsight.mjs" },
+              "./package.json": { "default": "./package.json" } }
+```
+
+Self-consistent. Note the published package now carries an **`exports` map of
+its own**, which deliberately exposes only the root — so consumers cannot deep
+import *into* this library. That is the right outcome, and it is also exactly
+the mechanism described below in reverse.
+
+### P1 just got more serious — and the fix is now available
+
+The published `index.d.ts` still leaks a deep import, on **line 3**:
+
+```ts
+import { IConfig } from '@bloomscorp/bloomsight.js/dist/configuration/interface/config';
+```
+
+Why 20 changes the stakes: from Angular 20 the CLI sets consumers to
+`moduleResolution: "bundler"`, which resolves imports through `exports` maps.
+That line is resolved by the **consumer's** TypeScript, against *their*
+installed copy of the core. It works today only because the core ships no
+`exports` map (verified for both 0.7.0 and 0.8.0). The day the core adds one —
+an ordinary bit of modernisation — every consumer's build breaks inside **our**
+`.d.ts`, not in their own code, which is a miserable error to diagnose.
+
+The fix is to import `IConfig` from the core's package root. It is **not free**,
+and the reason is worth recording precisely:
+
+| Core version | Root exports `IConfig`? |
+|---|---|
+| **0.7.0** (currently installed; the peer floor) | ❌ root exports only `init`, `resolveSimpleEvent`, `resolveDataEvent`, `pageViewObserver`, `sendEmail` |
+| **0.8.0** | ✅ `export type { IConfig } from "./configuration/interface/config";` — added by the B2 work |
+
+So fixing P1 requires raising the core peer from `>=0.7.0 <1.0.0` to
+`>=0.8.0 <1.0.0`. That is a justified bump rather than a cosmetic one, and it is
+consistent with the migration plan, in which every project moves to `^0.8.0`
+regardless. **Not done here** — it is a peer-contract change and belongs in its
+own commit, with a decision behind it, not as a side effect of a version step.
+
+### Compatibility floor
+
+```
+minVersion: "12.0.0"   (x14)
+minVersion: "14.0.0"   (x2)
+version:    "20.3.33"  (x16)
+```
+
+Unchanged through 20, despite the dist-layout change. `>=14.2.0 <23.0.0` holds.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `npm run build-lib` | ✅ |
+| `npm run build` (demo app) | ✅ 278.61 kB initial (was 274.69 kB) — the known CSS budget warning only |
+| `ng test --watch=false --browsers=ChromeHeadless` | ✅ 3/3 and 5/5 — karma unaffected |
+| `npm run check-version` | ✅ in sync at 1.6.0 |
+| Library `peerDependencies` | ✅ `git diff` empty |
+| `minVersion` | ✅ still 14.0.0 |
+| Published manifest pointers | ✅ `module` and `typings` both resolve to files that exist |
+
+---
+
+## 20 → 21
+
+_Next._ From the forward map, plus what is now known:
+
+- **TypeScript**: 21 wants `>=5.9 <6.0`; we are on **5.8.3**, so this **will**
+  move, to 5.9.
+- **zone.js**: `~0.15.0 || ~0.16.0` — 0.15.1 already satisfies, so probably no
+  move.
+- **Node**: same one-patch margin as 20, which 20 proved fine.
+- **Karma survives.** Checked in `builders.json`: the `karma` builder is present
+  in build-angular 20, 21 **and 22**. (`web-test-runner` disappears at 22, but
+  this repo does not use it.) So `ng test` is not at risk during the climb,
+  and A7 in MODERNISATION.md stays a deliberate choice rather than a deadline.
+- Then **22**, which is the one with real teeth: **TypeScript 6.0** and the
+  **Node bump** (`^22.22.3 || ^24.15.0 || >=26.0.0` — 22.12.0 fails).
