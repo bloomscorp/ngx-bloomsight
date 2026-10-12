@@ -155,6 +155,25 @@ The last one mattered: `ng update` rewrites `package.json` dependency ranges, an
 it could have clobbered the widened peer ranges from the B2 fix. It did not —
 it only touches the workspace `package.json`, not the library's.
 
+### Decision: `.browserslistrc` stays deleted
+
+Asked and settled 2026-10-12. The deleted file was byte-identical to the stock
+`ng new` output, which is exactly the migration's criterion, and from Angular 15
+the CLI carries that same list internally — so it was duplication, not
+configuration.
+
+It also has **no effect on what this package publishes**. Browserslist governs JS
+downlevelling and CSS autoprefixing; the library ships zero stylesheets, and with
+`compilationMode: "partial"` the downlevelling is done by the *consuming app's*
+build using the *consuming app's* browserslist. A library's own browserslist
+never reaches a consumer.
+
+The trade-off accepted: the **demo app's** build targets now track Angular's
+default rather than a pinned list, so they will shift when Angular changes its
+supported-browser policy — which happens at 16. Fine for a demo app that
+exercises nothing. Restore with
+`git checkout 60ecc44 -- .browserslistrc` if explicit control is ever wanted.
+
 ### Notes for later steps
 
 - Commit before every `ng update`; the clean-tree check is not negotiable.
