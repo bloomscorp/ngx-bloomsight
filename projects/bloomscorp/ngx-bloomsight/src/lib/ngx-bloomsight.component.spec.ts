@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { NgxBloomsightComponent } from './ngx-bloomsight.component';
@@ -13,6 +13,7 @@ import { NgxBloomsightModule } from './ngx-bloomsight.module';
 @Component({
   standalone: true,
   imports: [NgxBloomsightModule],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: '<lib-ngx-bloomsight></lib-ngx-bloomsight>'
 })
 class HostComponent { }

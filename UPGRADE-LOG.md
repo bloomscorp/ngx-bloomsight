@@ -69,7 +69,7 @@ it is forced and not before.
 | 19 | `^18.19.1 \|\| ^20.11.1 \|\| >=22.0.0` | ✅ satisfies |
 | 20 | `^20.19.0 \|\| ^22.12.0 \|\| >=24.0.0` | ⚠️ satisfies by **one patch** — `^22.12.0` and we run 22.12.0 exactly. **Verified at the 20 step: no warning, no failure** |
 | 21 | `^20.19.0 \|\| ^22.12.0 \|\| >=24.0.0` | ⚠️ same one-patch margin. **Verified at the 21 step: fine** |
-| 22 | `^22.22.3 \|\| ^24.15.0 \|\| >=26.0.0` | ❌ needs bump |
+| 22 | `^22.22.3 \|\| ^24.15.0 \|\| >=26.0.0` | ✅ **resolved** — `.node-version` pinned to `v24.18.0` (`f648801`) |
 
 `fnm` already has `v22.23.2` and `v24.18.0` installed, so it is a one-line
 `.node-version` change when the time comes.
@@ -100,6 +100,7 @@ Recorded as they are offered. Nothing here has been applied.
 | 20 | `router-current-navigation` (`@angular/core`) | `ng update @angular/core --migrate-only --name=router-current-navigation` | Replaces `Router.getCurrentNavigation()` with the `Router.currentNavigation` signal. **A no-op here** — the library only subscribes to `NavigationEnd`. Noted so it is not mistaken for pending work. |
 | 21 | `use-application-builder` (`@angular/cli`) | `ng update @angular/cli --migrate-only --name=use-application-builder` | Fifth offer, declined. Still safe — the `browser` builder is present through 22. |
 | 21 | `router-current-navigation` (`@angular/core`) | `ng update @angular/core --migrate-only --name=router-current-navigation` | Offered again; still a no-op here. |
+| 22 | `use-application-builder` (`@angular/cli`) | `ng update @angular/cli --migrate-only --name=use-application-builder` | Sixth and final offer, declined. Never became mandatory, exactly as predicted at 18. |
 
 ---
 
@@ -1195,19 +1196,181 @@ Root import, both aliases exported. No `dist/` path.
 
 ---
 
-## 21 → 22 — the last step, and the one with teeth
+## 21 → 22 — ✅ done, and the only step that needed hand fixes
 
-Two forced moves, both real:
+**Result: no `--force`, but the first and only step requiring manual
+intervention — two TypeScript 6 errors, and one self-inflicted breakage.**
 
-- **TypeScript 5.9.3 → 6.0** (`>=6.0 <6.1`). A major. The deprecated-flag
-  removals were already cleared at 17, and `moduleResolution` is already
-  `bundler` as of 20, so the two obvious hazards are gone — but a TypeScript
-  major deserves the same pre-flight audit that 5.x got at 17.
-- **Node must move.** 22 requires `^22.22.3 || ^24.15.0 || >=26.0.0` and we run
-  **22.12.0**, which fails. `fnm` already has `v22.23.2` and `v24.18.0`
-  installed, so this is a `.node-version` edit plus `fnm use` — but it is the
-  first environment change of the whole climb, and `.node-version` currently
-  says `v20`, which has been stale since the baseline.
+### Node moved first, as its own commit
 
-Also expected at 22: `web-test-runner` disappears from `builders.json`, though
-this repo does not use it. The `karma` and `browser` builders both survive.
+Angular 22 requires `^22.22.3 || ^24.15.0 || >=26.0.0`; the workspace ran
+22.12.0. `.node-version` was pinned to **v24.18.0** in `f648801`, and
+**Angular 21 was verified green on Node 24 before Angular was touched** —
+build-lib ✅, tests 3/3 and 9/9 — so that any 22 failure could not be
+confused with a Node problem. It paid off: the failures that followed were
+unambiguously TypeScript's.
+
+The global `fnm` default was deliberately left at 22.12.0. This is a repo-level
+pin; other projects on the machine are unaffected.
+
+### What it changed
+
+| Package | 21 | 22 |
+|---|---|---|
+| `@angular/*` | 21.2.25 | 22.2.2 |
+| `@angular/cli`, `build-angular` | 21.2.26 | 22.2.2 |
+| `ng-packagr` | ^21.2.7 | ^22.2.4 |
+| **`typescript`** | ~5.9.3 | **~6.0.3** |
+| `zone.js` | ~0.15.1 | unchanged |
+| `istanbul-lib-instrument` | — | ^6.0.3 (added by `add-istanbul-instrumenter` for Karma coverage) |
+
+### TypeScript 6 errors, and the organic fixes
+
+Two hard errors on the first build — the only TypeScript errors in the whole
+climb:
+
+```
+error TS5101: Option 'baseUrl' is deprecated and will stop functioning in
+              TypeScript 7.0. Specify compilerOption '"ignoreDeprecations": "6.0"'
+              to silence this error.
+error TS5101: Option 'downlevelIteration' is deprecated and will stop functioning
+              in TypeScript 7.0. …
+```
+
+`ignoreDeprecations` was available and deliberately **not** used — it only
+defers the same failure to TypeScript 7. Both were resolved by removing the
+options:
+
+| Option | Why removing it is correct |
+|---|---|
+| `downlevelIteration` | Only affects ES5/ES3 targets. At `target: ES2022` it is inert — genuinely dead configuration |
+| `baseUrl: "./"` | Existed only to anchor `paths`, and since TypeScript 4.1 `paths` resolves relative to the tsconfig itself. The mapping was made relative (`./dist/...`) instead |
+
+### The self-inflicted part — worth recording honestly
+
+Removing `baseUrl` **broke the demo app build**:
+
+```
+public-api.ts is missing from the TypeScript compilation.
+src/app/app.component.html:498:1 - error NG8001: 'router-outlet' is not a known element
+```
+
+The second error was cascading from the first. The cause: the demo app imported
+the library as
+`'projects/bloomscorp/ngx-bloomsight/src/public-api'` — a **non-relative**
+specifier, which only resolved *because* of `baseUrl`. Without it, TypeScript
+treats that as a package name and fails.
+
+So `baseUrl` was **not** dead configuration, contrary to the assessment above.
+`downlevelIteration` was; `baseUrl` had a real dependent that nothing in the
+tsconfig made visible.
+
+Fixed by making the demo app's import relative
+(`../../projects/bloomscorp/ngx-bloomsight/src/public-api`), which preserves the
+existing behaviour exactly. The *proper* fix is **T2** — the demo app should
+import `@bloomscorp/ngx-bloomsight` and consume the built package, which is what
+the `paths` mapping already points at. That was not done here because
+`npm run build` does not chain `build-lib`, so it would require a build-order
+change and would break a clean checkout. It belongs with the demo app rebuild.
+
+**Lesson for the 2.0.0 work:** a non-relative import into another project's
+source is invisible coupling to `baseUrl`. Worth grepping for before touching
+path configuration again.
+
+### `ChangeDetectionStrategy.Eager` — the prediction that was wrong
+
+`change-detection-eager` added `changeDetection: ChangeDetectionStrategy.Eager`
+to both components and the spec's host component. The concern raised beforehand:
+`Eager` is new in 22, so it would land in the published partial declarations and
+push `minVersion` from 14.0.0 to 22.0.0, invalidating the
+`>=14.2.0 <23.0.0` peer range. The agreed plan was to withhold it from the
+library component if so.
+
+**It did not happen, and no action was needed.** From Angular 22's own enum:
+
+```ts
+OnPush  = 0,
+Eager   = 1,
+Default = 1   // @deprecated Use `Eager` instead.
+```
+
+`Eager` is a **rename of `Default`**, numerically identical. The declaration
+emits `changeDetection: 1` — exactly what `Default` emitted — so every older
+linker reads it unchanged. `minVersion` stayed at 14.0.0.
+
+The real change behind this migration is that **Angular 22 makes `OnPush` the
+default strategy** ("NOTE: OnPush is enabled by default"), and the migration adds
+`Eager` to preserve pre-22 CheckAlways behaviour. For 2.0.0 the `Eager` flag
+should simply be dropped: the component is deleted, and anything new should take
+the OnPush default rather than opt out of it.
+
+### Diagnostics that were suppressed, not fixed
+
+`strict-safe-navigation-narrow` added this to **five** tsconfigs
+(`tsconfig.app.json`, `tsconfig.spec.json`, and the library's `lib`, `lib.prod`
+and `spec`):
+
+```json
+"angularCompilerOptions": {
+  "extendedDiagnostics": {
+    "checks": {
+      "nullishCoalescingNotNullable": "suppress",
+      "optionalChainNotNullable": "suppress"
+    }
+  }
+}
+```
+
+Angular 22 enables these two template diagnostics by default; the migration
+suppresses them to preserve pre-22 behaviour. **This is an opt-out of new strict
+checking, and it is worth reversing deliberately** — remove the suppressions and
+fix whatever they surface. Deferred to 2.0.0 rather than done mid-step, and
+logged here so it is not mistaken for intended configuration.
+
+### Other migrations
+
+`strict-templates-default` was a no-op (`strictTemplates: true` was already set).
+`safe-optional-chaining` was a no-op (no optional chaining in templates).
+`http-xhr-backend`, `incremental-hydration`, `model-output`,
+`can-match-snapshot-required`, `trust-proxy-headers` and `update-workspace-config`
+all no-ops.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `npm run build-lib` | ✅ on TypeScript 6.0.3 |
+| `npm run build` (demo app) | ✅ 289.06 kB (was 285.40 kB) — known CSS warning only |
+| `ng test` | ✅ 3/3 and 9/9 |
+| `npm run check-version` | ✅ 1.6.0 |
+| Library `peerDependencies` | ✅ unchanged |
+| **`minVersion`** | ✅ **still 14.0.0** |
+| P1 facade in published types | ✅ root import only |
+| Node | ✅ v24.18.0 |
+
+---
+
+## The climb is complete — 14.3.0 → 22.2.2
+
+Nine majors, nine commits, **no `--force` at any step**.
+
+| | |
+|---|---|
+| Angular | 14.3.0 → **22.2.2** |
+| TypeScript | 4.7.2 → **6.0.3** |
+| zone.js | 0.11.4 → **0.15.1** |
+| Node | 22.12.0 (pin said v20) → **24.18.0** |
+| ng-packagr | ^14.2.0 → **^22.2.4** |
+| Library tests | 2 → **9** |
+| `minVersion` (compatibility floor) | 14.0.0 → **14.0.0**, unmoved |
+
+**Steps that required nothing but `ng update`:** 14→15, 15→16, 16→17, 17→18,
+19→20, 20→21.
+**Steps that changed source:** 18→19 (standalone flag, then adopted properly),
+21→22 (change detection, and the import fix).
+**Steps with TypeScript errors:** 21→22 only.
+
+What carried the whole thing: committing before every `ng update`, reading the
+schematic collections directly instead of trusting the console, probing risky
+migrations with a throwaway tsconfig beforehand, and tracking `minVersion` in the
+built artifact rather than assuming the peer range still held.

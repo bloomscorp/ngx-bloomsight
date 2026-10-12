@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 
 /**
  * Standalone since the Angular 19 step.
@@ -21,6 +21,7 @@ import { Component, OnInit } from '@angular/core';
       ngx-bloomsight works!
     </p>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: []
 })
 export class NgxBloomsightComponent implements OnInit {
