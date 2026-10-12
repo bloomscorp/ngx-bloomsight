@@ -299,6 +299,26 @@ this.bloomsight.errors$.subscribe(e => this.logger.warn(e));
 **Clean break at 2.0.0.** Every consumer is ours, so carrying the old DI contract
 costs more than it saves, and a major is honest about what changed.
 
+### A tool the upgrade turned up
+
+`@angular/core@18` ships an `inject-migration` schematic that did not exist at
+17:
+
+```bash
+ng generate @angular/core:inject-migration
+```
+
+It rewrites constructor-based injection as `inject()` calls, which is precisely
+the shape the API above wants. The four constructors it would touch are
+`ngx-bloomsight.component.ts`, `ngx-bloomsight.service.ts` (both CLI
+scaffolding, both deleted by this rewrite) and the two real services,
+`bloomsight-mail.service.ts` and `bloomsight-event.service.ts`.
+
+So it is worth running **during 2.0.0, after the scaffolding is deleted** — not
+as part of the version climb, where it would rewrite code that is about to be
+removed. Noted here rather than in UPGRADE-LOG.md's deferred-migrations table
+because it is a tool for the rewrite, not a migration being skipped.
+
 ---
 
 ## 7. Order of work

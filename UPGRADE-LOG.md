@@ -61,6 +61,9 @@ it is forced and not before.
 | 16 | `^16.14.0 \|\| >=18.10.0` | ✅ satisfies |
 | 17 | `^18.13.0 \|\| >=20.9.0` | ✅ satisfies, and no "Unsupported" warning |
 | 18 | `^18.19.1 \|\| ^20.11.1 \|\| >=22.0.0` | ✅ satisfies |
+| 19 | `^18.19.1 \|\| ^20.11.1 \|\| >=22.0.0` | ✅ satisfies |
+| 20 | `^20.19.0 \|\| ^22.12.0 \|\| >=24.0.0` | ⚠️ satisfies by **one patch** — `^22.12.0` and we run 22.12.0 exactly |
+| 21 | `^20.19.0 \|\| ^22.12.0 \|\| >=24.0.0` | ⚠️ same one-patch margin |
 | 22 | `^22.22.3 \|\| ^24.15.0 \|\| >=26.0.0` | ❌ needs bump |
 
 `fnm` already has `v22.23.2` and `v24.18.0` installed, so it is a one-line
@@ -84,6 +87,7 @@ Recorded as they are offered. Nothing here has been applied.
 | 15 | `standalone-migration` (`@angular/core:standalone`) | `ng generate @angular/core:standalone` | Converts the app/library to standalone components. The 2.0.0 rewrite replaces the public API with `provideBloomsight()` and deletes the only component (CLI scaffolding), so running this now would convert code that is about to be removed. Do it as part of 2.0.0, not here. |
 | 17 | `use-application-builder` (`@angular/cli`) | `ng update @angular/cli --migrate-only --name=use-application-builder` | Swaps the webpack `browser` builder for the esbuild-based `application` builder. It rewrites `angular.json` build targets and changes how the **demo app** is bundled — it has no effect on the library, which is built by `ng-packagr`. Deferred because it is a build-system change in the middle of a nine-major climb: if a later version breaks, I want the builder to be a constant, not another variable. Revisit once the chain reaches 22, where this builder is the default anyway. |
 | 17 | `control-flow-migration` (`@angular/core`) | `ng generate @angular/core:control-flow` | Rewrites `*ngIf` / `*ngFor` / `*ngSwitch` as `@if` / `@for` / `@switch`. The only templates in the repo are the CLI-scaffolded demo app and the library's placeholder component, both of which the 2.0.0 rewrite deletes. Nothing to gain; same reasoning as `standalone-migration`. |
+| 18 | `use-application-builder` (`@angular/cli`) | `ng update @angular/cli --migrate-only --name=use-application-builder` | Offered again, declined again — and now known to be safe to defer indefinitely: the `browser` builder is still present in `@angular-devkit/build-angular` **19, 20, 21 and 22**, and is not even flagged deprecated at 22. See §Forward map. |
 
 ---
 
@@ -419,21 +423,141 @@ loose end noted there is not made worse.
 
 ---
 
-## 17 → 18
+## 17 → 18 — ✅ done
 
-_Next._ Requirements checked against the registry ahead of time:
+**Result: the lightest step in the chain. No `--force`, no source changes, no
+config changes, no TypeScript errors. Only `package.json` and the lock file
+moved.**
 
-| | Angular 18 requires | Current | Moves? |
+### Pre-flight
+
+Every requirement was checked against the registry *before* running, and every
+one of 18's migrations was checked against the source. The prediction was "this
+should be free", and it was.
+
+| | 18 requires | Had | Moved? |
 |---|---|---|---|
-| `typescript` | `>=5.4 <5.6` | 5.4.5 | **no** |
-| `zone.js` | `~0.14.10` | 0.14.10 | **no** |
+| `typescript` | `>=5.4 <5.6` | 5.4.5 | **no** — 17 overshot straight into this range |
+| `zone.js` | `~0.14.10` | 0.14.10 | **no** — exact match |
 | `rxjs` | `^6.5.3 \|\| ^7.4.0` | 7.5.0 | no |
+| `karma` | `^6.3.0` | 6.4.3 | no |
 | Node | `^18.19.1 \|\| ^20.11.1 \|\| >=22.0.0` | 22.12.0 | no |
 
-So 18 should be the lightest step in the chain — nothing in the dependency
-floor has to move, because 17 overshot TypeScript to 5.4.5. What is left is
-whatever the migrations rewrite, plus the removal of APIs deprecated in 17.
+### Commands
 
-18 is also where the application builder becomes the default for new projects,
-so re-read the `use-application-builder` decision if the demo app build
-misbehaves.
+```bash
+npx ng update @angular/cli@18 @angular/core@18
+```
+
+Bootstrapped a temporary CLI 18.2.21. Unlike previous steps it also reported
+`Cleaning node modules directory` and did a full reinstall.
+
+### What it changed
+
+| Package | 17 | 18 |
+|---|---|---|
+| `@angular/*` | 17.3.12 | 18.2.14 |
+| `@angular/cli`, `build-angular` | 17.3.17 | 18.2.21 |
+| `ng-packagr` | ^17.3.0 | ^18.2.1 |
+| `typescript` | ~5.4.5 | unchanged |
+| `zone.js` | ~0.14.10 | unchanged |
+
+### Automated migrations that ran
+
+All four found nothing, each for a reason verified in the source beforehand:
+
+| Migration | Why it could not fire |
+|---|---|
+| `migration-http-providers` (`HttpClientModule` → `provideHttpClient()`) | Zero `HttpClient`/`HttpClientModule` references anywhere — the SDK uses fetch, not Angular's HTTP client |
+| `migration-after-render-phase` | No `afterRender` calls |
+| `add-bootstrap-context-to-server-main` | No `src/main.server.ts`; the workspace has no SSR |
+| `invalid-two-way-bindings` | Already ran clean at 17 |
+
+### Errors fixed
+
+**None.**
+
+### Optional migrations
+
+`use-application-builder`, offered again and declined again. **This time
+`ng update` did print the notice**, where at 17 it printed nothing — the console
+output is version-dependent, which confirms the rule added at 17: read the
+schematic collections directly rather than trusting the console to advertise.
+
+New `ng generate` schematics appeared in `@angular/core@18` that did not exist
+at 17: **`inject-migration`** (constructor injection → `inject()`) and
+`route-lazy-loading-migration`. Neither is part of the climb, but
+`inject-migration` is directly useful to the **2.0.0 rewrite** — the four
+constructors in the library are exactly what it converts. Noted there rather
+than in §Optional migrations, because it is a tool for the rewrite, not a
+deferred migration.
+
+### Compatibility floor
+
+```
+minVersion: "12.0.0"   (x14)
+minVersion: "14.0.0"   (x2)
+version:    "18.2.14"  (x16)
+```
+
+Still 14. Dist layout unchanged (`esm2022/` + `fesm2022/`). The
+`>=14.2.0 <23.0.0` peer range continues to hold — now verified at 15, 16, 17
+and 18.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `npm run build-lib` | ✅ built in 2.3s |
+| `npm run build` (demo app) | ✅ 273.80 kB initial (was 261.07 kB) |
+| `ng test --watch=false --browsers=ChromeHeadless` | ✅ 3/3 and 2/2 |
+| `npm run check-version` | ✅ in sync at 1.6.0 |
+| Library `peerDependencies` | ✅ `git diff` empty |
+| `minVersion` | ✅ still 14.0.0 |
+
+---
+
+## Forward map — 19 to 22, researched at the 18 step
+
+Pulled from the published `peerDependencies`, `engines` and `builders.json` of
+each major, so the rest of the climb can be planned rather than discovered.
+
+| Step | TypeScript | zone.js | Node | ng-packagr |
+|---|---|---|---|---|
+| 19 | **`>=5.5 <5.9`** → moves to 5.8 | **`~0.15.0`** → moves | `>=22.0.0` ok | ^19 |
+| 20 | `>=5.8 <6.0` → 5.9 | `~0.15.0` | `^20.19.0 \|\| ^22.12.0 \|\| >=24.0.0` | ^20 |
+| 21 | `>=5.9 <6.0` | `~0.15.0 \|\| ~0.16.0` | same as 20 | ^21 |
+| 22 | **`>=6.0 <6.1`** → **TypeScript 6** | `~0.15.0 \|\| ~0.16.0` | **`^22.22.3 \|\| ^24.15.0 \|\| >=26.0.0`** | ^22 |
+
+Three conclusions that change the plan:
+
+1. **19 is the next step with real movement** — TypeScript *and* zone.js both
+   move, the first time two floors shift together.
+2. **Angular 22 pulls TypeScript 6.0.** This upgrades
+   `moduleResolution: "node"` from a vague watch item to a dated one: TS 6 is
+   the most likely place legacy `node` resolution stops being accepted. Expect
+   an intermediate fix around 20–22, as its own commit.
+3. **`use-application-builder` never becomes mandatory.** `builders.json` in
+   build-angular 19, 20, 21 and 22 all still expose the `browser` builder, and
+   22 does not even mark it deprecated. Deferring it to 2.0.0 carries no risk of
+   forced rework — a worry carried since 17, now retired.
+
+Also worth noting: Node 22.12.0 satisfies 20 and 21 by a **single patch version**
+(`^22.12.0`). It holds, but there is no headroom, so if anything odd appears at
+20 check the Node version first.
+
+---
+
+## 18 → 19
+
+_Next, and the first step since 16 with forced dependency movement._
+
+- **TypeScript 5.4.5 → 5.8.x** (`>=5.5 <5.9`). Crosses 5.5, 5.6, 5.7, 5.8.
+  5.5 is where `moduleResolution: "node"` starts drawing attention, so watch for
+  a deprecation warning even if it still builds.
+- **zone.js 0.14.10 → 0.15.x** (`~0.15.0`).
+- Node is fine (`>=22.0.0`).
+- Angular 19 is the release that made standalone the default and deprecated a
+  batch of module-era APIs, so expect more migrations to actually fire than in
+  18 — the library still uses `NgModule`, which is exactly the shape 19 nudges
+  away from. It stays until 2.0.0 regardless.
