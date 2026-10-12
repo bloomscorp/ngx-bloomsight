@@ -58,6 +58,7 @@ it is forced and not before.
 | Angular | `engines.node` | Local 22.12.0 |
 |---|---|---|
 | 15 | `^14.20.0 \|\| ^16.13.0 \|\| >=18.10.0` | ✅ satisfies `engines`, but see note |
+| 16 | `^16.14.0 \|\| >=18.10.0` | ✅ satisfies |
 | 22 | `^22.22.3 \|\| ^24.15.0 \|\| >=26.0.0` | ❌ needs bump |
 
 `fnm` already has `v22.23.2` and `v24.18.0` installed, so it is a one-line
@@ -184,6 +185,99 @@ exercises nothing. Restore with
 
 ---
 
-## 15 → 16
+## 15 → 16 — ✅ done
 
-_Next._
+**Result: clean. No `--force`, no code changes, no TypeScript errors.**
+
+### Commands
+
+```bash
+npx ng update @angular/cli@16 @angular/core@16
+```
+
+The locally installed CLI was 15, so it bootstrapped a temporary 16.2.16 to run
+the update — normal, and worth knowing so the message is not mistaken for a
+problem.
+
+### What it changed
+
+| Package | 15 | 16 |
+|---|---|---|
+| `@angular/*` | 15.2.10 | 16.2.12 |
+| `@angular/cli`, `build-angular` | 15.2.11 | 16.2.16 |
+| `ng-packagr` | ^15.2.2 | ^16.2.3 |
+| **`zone.js`** | 0.11.8 | **0.13.3** |
+| `typescript` | ~4.9.5 | **unchanged** |
+
+`zone.js` was the forced move — Angular 16 peers on `~0.13.0` and 0.11.8 was out
+of range. `ng update` handled it without being asked.
+
+TypeScript stayed at ~4.9.5, which satisfies Angular 16's `>=4.9.3 <5.2`.
+**Angular 17 requires >=5.2, so the TypeScript jump lands on the next step**, not
+this one.
+
+### Automated migrations that ran
+
+All five found nothing to change: `defaultProject` removal,
+`defaultCollection` → `schematicCollections`, the server-builder
+`buildOptimizer` tweak, the 15.2-deprecated guard/resolver interfaces
+(`CanActivate`, `Resolve` — none used), and `@Component.moduleId`.
+
+### Errors fixed
+
+**None.**
+
+### Packaging change worth knowing: the dist layout
+
+ng-packagr 16 changed what it emits:
+
+| 15 | 16 |
+|---|---|
+| `esm2020/`, `fesm2015/`, `fesm2020/` | `esm2022/`, `fesm2022/` |
+
+So the ES2015 and ES2020 bundles are gone and the package ships ES2022 only.
+
+I initially read this as breaking the widened `>=14.2.0 <23.0.0` peer range from
+the B2 fix — a library built on Angular 16 surely cannot be consumed by an
+Angular 14 app. **That was wrong.** The partial declarations carry the floor
+explicitly, and the built output says:
+
+```
+minVersion: "12.0.0"   (×14)
+minVersion: "14.0.0"   (×2)
+version:    "16.2.12"  (×16)
+```
+
+`minVersion` is the oldest Angular whose linker can process these declarations,
+and it is still 14. `version` is merely what produced them. So the declared peer
+range remains defensible.
+
+**Track `minVersion` at every remaining step** — it is the authoritative
+compatibility floor, and it rises when the library starts using newer framework
+features. It is what the final `2.0.0` peer range should be derived from rather
+than guessed at.
+
+One loose end: with `fesm2015`/`fesm2020` gone, an old consumer toolchain now
+resolves `module` → `fesm2022` and has to parse ES2022. `minVersion` says the
+*linker* is fine; whether an Angular 14-era webpack build digests ES2022 syntax
+is a separate question, untested. It only matters if we ever genuinely support a
+14-era consumer — settle it when the `2.0.0` peer range is finalised, by
+installing the built tarball into a real old app rather than reasoning about it.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `npm run build-lib` | ✅ `Built @bloomscorp/ngx-bloomsight` |
+| `npm run build` (demo app) | ✅ 255.03 kB initial (was 248.58 kB) |
+| `ng test --watch=false --browsers=ChromeHeadless` | ✅ 3/3 and 2/2 |
+| `npm run check-version` | ✅ in sync at 1.6.0 |
+| Library `peerDependencies` | ✅ unchanged |
+
+---
+
+## 16 → 17
+
+_Next._ Expect the TypeScript jump (16 allows `<5.2`, 17 requires `>=5.2`), and
+this is the version where the `browserTarget` → `buildTarget` rename and the
+optional application-builder migration arrive.
