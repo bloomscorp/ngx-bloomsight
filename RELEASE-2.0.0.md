@@ -57,47 +57,91 @@ repeating exactly the untested-range problem this project has criticised twice.
 > `minVersion` in the built artifact must also come out **≤ 19.0.0**. It is the
 > compiler's own statement of the floor and the only non-negotiable evidence.
 
-## 1. Core — `bloomsight.js` 0.9.0 — ✅ code done, release pending
+## 1. Dependency release chain — do these in order
 
-Committed in `bloomsight.js` as `55ece65`. **Not yet pushed or published.**
+Three repositories, and the order is forced: each step's output is the next
+step's input. Nothing in §2–§7 can finish until phase 3 lands.
 
-- [x] **P6** `EmailEngineTypeEnum` is exported as a value from `src/index.ts`,
-      so it exists at runtime. Verified in both bundles' export tables with the
-      object genuinely constructed (`GMAIL="GMAIL"`)
-- [x] `sendEmail` and `transferEmail` accept
-      ``EmailEngineType = EmailEngineTypeEnum | `${EmailEngineTypeEnum}` ``, so a
-      plain `'GMAIL'` assigns without a cast. **No wrapper needs
-      `as unknown as` any more** — the template-literal form also stays correct
-      if a member is ever added
-- [x] 4 tests on the contract, plus `scripts/verify-runtime-exports.js` as a
-      packaging gate wired into `ci.yml` and `release.yml` before publish
-- [ ] Push, release 0.9.0 through CI, confirm the published tarball
-- [ ] Then raise ngx's core peer to `>=0.9.0 <1.0.0` (**D3**)
+**Why there is a chain at all.** `bmx-pastebox` ships ESM syntax in `.js` files
+with no `"type": "module"`, and its relative imports are extensionless. Node
+rejects it in both module systems; only lenient bundlers like webpack load it.
+`bloomsight.js` depends on it and does **not** bundle it
+(`skipNodeModulesBundle: true`), so it inherits the fault, and `ngx-bloomsight`
+inherits it in turn — which is what makes Vitest fail.
 
-### What this turned up — and why P1 was load-bearing
+### Current state
 
-Verifying the fix surfaced something larger. **Published 0.8.0 contains 49
-`.d.ts` files with no `.js` beside them** — the entire per-file declaration tree
-from a pre-`tsup` build. Proved stale rather than generated, by rebuilding
-0.8.0's source from a clean tree: it emits **two** declaration files, not
-fifty-one. The core's `package.json` has no `files` field, so a release packed
-on a developer machine ships whatever is in `dist/`, and 0.8.0 predates
-publishing moving into CI.
+| | version | published | state |
+|---|---|---|---|
+| `bmx-pastebox` | 1.0.17 | 1.0.17 | fixed on `master`, **1 commit unpushed** |
+| `@bloomscorp/bloomsight.js` | 0.9.1 | 0.9.1 | published, still depends on `bmx-pastebox@^1.0.14` |
+| `ngx-bloomsight` | 1.6.0 | 1.6.0 | on `feat/2.0.0`, core peer `>=0.8.0`, still on Karma |
 
-The consequence for this project is concrete:
+> **`0.9.1` is fine for browser and bundler consumers** — the 15 customer sites,
+> Angular app builds and the CDN `umd/` files all work. It is broken only for
+> Node consumers: SSR, scripts, and native-ESM tooling such as Vitest.
 
-> `dist/configuration/interface/config.d.ts` — the file this library
-> deep-imported until this morning — **does not exist in a current build**, and
-> will not be in 0.9.0.
+---
 
-So the **P1 fix was not merely tidiness.** Had the deep imports stayed, bumping
-the core to 0.9.0 would have broken this library's build outright, with an error
-pointing at a path that simply vanished. P1 was fixed hours before the thing it
-protects against became real.
+### Phase 1 — release `bmx-pastebox`
 
-It also sharpens the facade rule: deep imports were resolving against
-declaration files with no implementation behind them. They worked only because
-every one was used in a type position.
+Code is done and committed (`e742f20`). What remains is publishing it.
+
+- [ ] **You:** configure an npm **trusted publisher** for `bmx-pastebox` —
+      npmjs.com → the package → Settings → Trusted Publishers → repository
+      `bloomscorp/bmx-pastebox`, workflow `release.yml`. **Blocking:** the
+      release workflow has no token and cannot publish without this
+- [ ] Push `master` (1 commit)
+- [ ] Confirm `ci.yml` goes green on the push — this is the repo's first CI run
+      ever, so expect to iron out something
+- [ ] `npm run release` → choose **minor → 1.1.0**. The packaging change is too
+      substantial for a patch: the module format, entry points and `exports` map
+      all changed
+- [ ] Confirm `1.1.0` is on npm
+- [ ] Verify the **published tarball**, not the local build:
+      `npm pack bmx-pastebox@1.1.0`, then `require()` **and** `import` it by
+      package name. This is the exact failure mode that shipped 17 times
+
+Note: the git/npm version drift is already resolved — `package.json` said 1.0.15
+in git while npm served 1.0.17; the committed file now says 1.0.17.
+
+---
+
+### Phase 2 — bump and release `bloomsight.js`
+
+- [ ] Push the 1 unpushed commit (`1a9ec3e`, the export-gate ordering fix)
+- [ ] Bump the dependency to `bmx-pastebox: ^1.1.0`
+- [ ] **Add the gate whose absence let 0.9.1 ship broken.** None of this repo's
+      checks ever load the built package through Node:
+      `lint` typechecks, the tests run from `src/` under Vitest **browser** mode
+      (where Vite pre-bundles deps with esbuild and tolerates the bad imports),
+      `build`/`bundle` only compile, and `verify:exports` is static **by
+      design** — it was written that way *because* loading `dist/` failed on
+      `bmx-pastebox`, treating the symptom as an obstacle instead of a finding.
+      Copy `scripts/verify-package.js` from `bmx-pastebox`: it loads the built
+      artifact by package name in CJS and ESM, and would have blocked 0.9.1
+- [ ] Wire that gate into `before:init`, `ci.yml` and `release.yml`, **after**
+      `bundle` (ordering matters — see the 0.9.0 post-mortem in this repo's log)
+- [ ] Confirm a Node consumer can now load it:
+      `npm install @bloomscorp/bloomsight.js` in a scratch dir, then `require`
+      and `import`
+- [ ] `npm run release` → **patch → 0.9.2**. No API change, only a dependency
+      fix
+- [ ] Verify the published tarball loads in Node
+
+---
+
+### Phase 3 — Vitest, then the rest of 2.0.0
+
+- [ ] Bump the core in this workspace to `^0.9.2` and raise the library peer to
+      `>=0.9.2 <1.0.0` (**D3** — currently `>=0.8.0`)
+- [ ] Flip the library `test` target back to `@angular/build:unit-test` with
+      `runner: vitest`. Everything else for this is already in place from the
+      spike: `@angular/build`, `vitest` and `jsdom` installed, and the build
+      target already moved to `@angular/build:ng-packagr`
+- [ ] Confirm all 9 existing tests pass under Vitest — 1 of 3 suites already did
+- [ ] Then §4 below (remove Karma), §5 (real tests), §2 (API rewrite), §3 (demo
+      app), §6 (CI and release), §7 (docs)
 
 ## 2. Library — the 2.0.0 API
 
@@ -217,7 +261,7 @@ three spec files and executed them.
       "is not supported"; the `@angular/build` equivalent is. Verified the
       library still builds, and the warning is gone. Kept — it is a clean
       improvement regardless of the runner
-- [ ] **Blocked:** fix `bmx-pastebox` (see below), then flip the test target
+- [ ] **Blocked until phase 3 of §1.** Then flip the test target
 - [ ] Remove `karma`, `karma-*`, `jasmine-core`, `@types/jasmine`,
       `istanbul-lib-instrument`; delete both `karma.conf.js` and both
       `src/test.ts`
@@ -347,10 +391,13 @@ Mirror what `bloomsight.js` ended up with; it has already been through this.
 ## 9. Suggested order
 
 1. ~~D1–D7 answered~~ ✅ settled 2026-10-12 (§0)
-2. ~~Core 0.9.0 (P6)~~ ✅ code done (`55ece65`); **release pending push/publish**
-3. ~~Vitest spike~~ ✅ builder works on a library; **blocked on dropping `bmx-pastebox` from the core** (§4)
-4. Library API rewrite, with tests written alongside
-5. Demo app rewrite against the built package
-6. CI + release pipeline
-7. Docs + migration guide
-8. Verification gate, then publish
+2. ~~Core P6 fix~~ ✅ released as `bloomsight.js@0.9.1` — 12 files, 0 orphan
+   declarations, enum present at runtime, verified against the published tarball
+3. ~~Vitest spike~~ ✅ `@angular/build:unit-test` drives a library project
+4. **§1 phase 1** — release `bmx-pastebox` 1.1.0 ← *needs the npm trusted
+   publisher from you*
+5. **§1 phase 2** — bump and release `bloomsight.js` 0.9.2, with the
+   consumer-load gate added
+6. **§1 phase 3** — bump the peer here, flip to Vitest, finish §4
+7. §5 real tests → §2 API rewrite → §3 demo app → §6 CI and release → §7 docs
+8. Verification gate (§8), then publish 2.0.0
