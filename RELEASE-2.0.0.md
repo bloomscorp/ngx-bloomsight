@@ -12,7 +12,7 @@
 
 > **Live tracker.** Updated and committed as each task lands.
 >
-> **Now:** 🔄 §6 — CI is live and green on GitHub (6.1–6.9). Waiting on: the npm trusted publisher for `@bloomscorp/ngx-bloomsight` (6.10, owner, guided).
+> **Now:** §6 is ✅ done — CI green on GitHub, trusted publisher created (pending validation by the first publish). Next: §7 docs and the migration guide, then §8, then the merge to `main` and the release.
 >
 > **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
 > `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released ·
@@ -458,7 +458,7 @@ against real old compilers before anything else.
 | RV9 | `tsconfig.lib.json` still excludes the deleted `src/test.ts` | ✅ | Removed |
 | RV10 | The same diagnostic suppressions are copied into five tsconfigs | ✅ | Removed from all five in §2 (task 2.10), rather than consolidated first |
 
-## 6. CI and release pipeline — T3, R1–R4 — 🔄 in progress
+## 6. CI and release pipeline — T3, R1–R4 — ✅ done 2026-10-15
 
 Mirror what `bloomsight.js` ended up with: local `release-it` bumps, tags and
 pushes; the tag triggers CI, which runs every gate again on a fresh checkout,
@@ -498,7 +498,7 @@ the GitHub release.
 | 6.7 | `release-it --dry-run` computes **2.0.0** from the commits (the `feat!` / `BREAKING CHANGE`) | ✅ | `release-it` 21 computes **2.0.0** |
 | 6.8 | `RELEASING.md` for this repo | ✅ | |
 | 6.9 | Push; the first CI run on `feat/2.0.0` goes green | ✅ | **Passed first time**, run 38769659037 on `d64641a` — after the same steps had passed in a fresh clone with `npm ci` and `CI=true` |
-| 6.10 | **You:** npm trusted publisher for `@bloomscorp/ngx-bloomsight` → `bloomscorp/ngx-bloomsight`, `release.yml`. Guided, one step at a time, when we get there | ⬜ | Blocks the publish only, not anything above |
+| 6.10 | **You:** npm trusted publisher for `@bloomscorp/ngx-bloomsight` → `bloomscorp/ngx-bloomsight`, `release.yml` | ✅ | Created 2026-10-15, **pending validation** until the first OIDC publish — expected, as with `bmx-pastebox`. npm drops it if unused by **2026-10-17 17:17 UTC**; if the release is later, re-create it with the same values first |
 
 ## 7. Docs and consumer migration
 
@@ -543,5 +543,6 @@ the GitHub release.
 8. ~~Code review, then push~~ ✅ (§5a)
 9. ~~§2 API rewrite~~ ✅
 10. ~~§3 demo app~~ ✅
-11. **§6 CI and release** ← now. Then §7 docs
-12. Verification gate (§8), then publish 2.0.0
+11. ~~§6 CI and release~~ ✅
+12. **§7 docs** ← next
+13. Verification gate (§8), merge to `main`, then publish 2.0.0
