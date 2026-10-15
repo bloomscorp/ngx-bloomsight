@@ -384,6 +384,8 @@ Mirror what `bloomsight.js` ended up with; it has already been through this.
 - [ ] Keep the `sync-version` hook — **B5/R4**, the published version must be the
       tagged version
 - [ ] `.node-version` (v24.18.0) respected in CI
+- [ ] **Upgrade the release tooling** (`release-it` 17, `@release-it/conventional-changelog` 8). As of 2026-10-15 `npm audit` on `feat/2.0.0` reports 19 issues (2 critical, 11 high), **all in dev-only tooling** and nearly all under `release-it`. The runtime tree that consumers install reports **0**. For comparison, GitHub flags 127 on `main`, which still has the Angular 14-era tree
+- [ ] CI must run `npm run test:coverage` (thresholds are not enforced by plain `npm test`) and `npm run verify:compat` (the proof behind the peer range)
 
 ---
 
