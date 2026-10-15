@@ -1,7 +1,6 @@
 # `ngx-bloomsight` 2.0.0 — release checklist
 
-> **Status: proposed, not started.** This is the plan for review before any work
-> begins.
+> **Status: in progress** on `feat/2.0.0`. See the live tracker below.
 >
 > Scope: resolve every item flagged in [MODERNISATION.md](./MODERNISATION.md),
 > rewrite the public API, rewrite the demo app from scratch, replace Karma with
@@ -13,7 +12,7 @@
 
 > **Live tracker.** Updated and committed as each task lands.
 >
-> **Now:** Review fixes are done (9 fixed, 1 deferred with a reason). Next: push `feat/2.0.0`, then §2, the API rewrite, with F1–F5 as inputs.
+> **Now:** 🔄 §2, the API rewrite. Design settled (§2.1), including F1: `label` is dropped. Working through the §2.2 task table.
 >
 > **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
 > `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released ·
@@ -193,49 +192,71 @@ fixing one is a deliberate change that will flip that test.
 | **F5** | **`pageViewObserver()` is public and subscribes again on every call.** The constructor already calls it, so a consumer calling it too gets every page view twice. Belongs with **B4** (the subscription is never released) | wrapper event service | — |
 | **F6** | **The mail service's `as unknown as` cast is now unnecessary, and its comment is out of date.** Core 0.9.2's `sendEmail` accepts plain `'GMAIL'` / `'CUSTOM_SMTP'` strings (the P6 fix), so the cast and the "enums are nominal" explanation can go — verify with the compiler when the file is rewritten | wrapper mail service | — |
 
-### 2.1 New surface
+### 2.1 The design — settled 2026-10-15
 
-- [ ] `BLOOMSIGHT_CONFIG` as a real `InjectionToken<BloomsightConfig>` — **P3**,
-      replacing the `'bloomsightConfig'` string token
-- [ ] `provideBloomsight(config)` returning `EnvironmentProviders` via
-      `makeEnvironmentProviders` — root-scoped by construction, **B6**
-- [ ] Initialisation through `provideAppInitializer`, not a constructor side
-      effect — **B1, B7, B8** dissolve together
-- [ ] One root `BloomsightService`, replacing `BloomsightEventService` +
-      `BloomsightMailService`
-- [ ] `track(token, label?)` / `trackData(token, data, label?)`
-- [ ] `sendMail({ engineId, templateId, data, engine? })` returning an
-      `Observable` — **P4**, replacing seven positional arguments and
-      success/error callbacks
-- [ ] Decide whether `templateOwnerId` is genuinely internal and can be dropped
-      from the public signature, or must stay
-- [ ] `errors$` surfacing the core's `onError`, plus an `errors` signal if it
-      earns its place — **A8**
-- [ ] Page views: `urlAfterRedirects`, `takeUntilDestroyed(inject(DestroyRef))`
-      — **B3, B4**
-- [ ] Page views self-disable with **one** warning under `target: 'blooms-ai'`
-      (no page-view endpoint there)
-- [ ] `isPlatformBrowser` guard so `init()` does not run during server render —
-      **A3**
-- [ ] `inject()` throughout — run `ng generate @angular/core:inject-migration`
-      **after** the scaffolding is deleted
+What a consuming app writes. Nothing here imports `@bloomscorp/bloomsight.js`.
 
-### 2.2 Deletions
+```ts
+// app.config.ts — once, in the application's root providers
+providers: [
+  provideRouter(routes),
+  provideBloomsight({ propertyToken: '…', isDevelopmentMode: false, target: 'blooms-ai' })
+]
 
-- [ ] `NgxBloomsightComponent` — CLI scaffolding, renders *"ngx-bloomsight
-      works!"* — **P2**
-- [ ] `NgxBloomsightService` — empty class — **P2**
-- [ ] `NgxBloomsightModule` and `forRoot()` — per **D7**
-- [ ] `internal/bloomsight-init.ts` — the `initOnce` guard becomes unnecessary
-      once an app initializer owns initialisation
-- [ ] `changeDetection: ChangeDetectionStrategy.Eager` flags — added by the 22
-      migration only to preserve pre-22 behaviour; new code should take the
-      OnPush default
-- [ ] The `extendedDiagnostics` suppressions
-      (`nullishCoalescingNotNullable`, `optionalChainNotNullable`) that the 22
-      migration wrote into **five** tsconfigs — remove them and fix whatever
-      they surface. This is an opt-out of new strict checking, not intended
-      configuration
+// anywhere
+private readonly bloomsight = inject(BloomsightService);
+
+this.bloomsight.track('signup-clicked');
+this.bloomsight.trackData('plan-selected', { plan: 'pro', seats: 5 });
+this.bloomsight.sendMail({ engineId, templateId, templateOwnerId, data: formData, engine: 'CUSTOM_SMTP' })
+  .subscribe({ next: () => …, error: (e: BloomsightError) => … });
+this.bloomsight.errors$.subscribe((e) => monitoring.report(e));
+```
+
+**Public API, complete:** `provideBloomsight`, `BLOOMSIGHT_CONFIG`,
+`BloomsightService`, and the types `BloomsightConfig`, `BloomsightError`,
+`BloomsightEmailEngine`, `BloomsightMailRequest`, `BloomsightEventData`. A test
+pins the runtime export list, so nothing reappears by accident.
+
+How each open question was settled, and why:
+
+| Question | Decision | Why |
+|---|---|---|
+| **F1** — `label` | **Dropped** from `track()` / `trackData()` (owner's decision, 2026-10-15) | No backend has ever recorded it. Adding it back later, if one ever does, breaks nobody |
+| `templateOwnerId` | **Kept**, required | The B1 mail endpoint needs it: the core sends it as the `userId` form field |
+| `sendMail` shape | Request object in, **cold** `Observable<void>` out: one emission then complete on success; errors with a `BloomsightError` (`code: 'MAIL_FAILED'`) on failure | Angular's convention (`HttpClient` is cold too), so nothing is sent until it is subscribed. Named fields remove the positional-string swap risk that §5 had to test for |
+| **F2** — `logOnly` mail | The Observable **emits and completes** once the core has the mail | `logOnly` means "behave normally, transmit nothing". A UI written for the real thing must not hang |
+| Server render (**A3**) | Nothing runs on the server: no `init()`, no router subscription, `track` is a no-op, `sendMail` completes without sending | There is no visitor on the server. Completing rather than erroring matters there: an unhandled RxJS error is rethrown asynchronously, which in Node can take down the server process |
+| `errors$` (**A8**) | Every failure the core reports through `onError`, plus `INIT_FAILED`. The app's own `onError` is still called. Mail failures go to that call's Observable only | One stream for monitoring; mail errors already have a caller waiting for them, and reporting them twice would double-count |
+| An `errors` signal | **Not added** | `toSignal(bloomsight.errors$)` is one line in the app. A second surface for the same data has to be kept in step forever |
+| Page views on blooms.ai | The router is **not observed** at all. One log line, under `debug` or `isDevelopmentMode` only | blooms.ai has no page-view endpoint. A console *warning* on every page load of every migrated production site would be noise |
+| Init failure (**RV4**) | Still caught and reported, never thrown. **No retry** — initialisation now happens once per app start | A throwing app initializer would abort bootstrap, which is far worse than the 1.x constructor failure RV4 fixed |
+| Used without `provideBloomsight()` | Injecting the service throws, with a message naming `provideBloomsight()` | Rather than Angular's generic `NullInjectorError` for a token the app has never heard of |
+| Called twice | Not guarded. Call it once, in the root providers | Each call is one app initializer, in the injector it is given. The 1.x module-level guard is what made tests need a reset seam |
+| `inject-migration` schematic | **Not needed** | Every class it would touch is deleted, and the new code uses `inject()` from the start |
+
+API ceiling check (§0.1, obligation 1) — every Angular API used, with the
+stability tag read from `@angular/core@19.0.0`'s own declarations:
+`provideAppInitializer` `@publicApi` · `makeEnvironmentProviders` `@publicApi` ·
+`takeUntilDestroyed` `@publicApi` · `DestroyRef`, `InjectionToken`, `inject`,
+`PLATFORM_ID`, `isPlatformBrowser` — all stable well before 19.
+
+### 2.2 Tasks
+
+| # | Task | Status | Notes |
+|---|---|---|---|
+| 2.1 | `BLOOMSIGHT_CONFIG` `InjectionToken` — **P3** | ⬜ | |
+| 2.2 | `provideBloomsight(config)` → `EnvironmentProviders` — **B6** | ⬜ | |
+| 2.3 | Init through `provideAppInitializer`, browser only — **B1, B7, B8, A3** | ⬜ | |
+| 2.4 | One root `BloomsightService`: `track`, `trackData`, `sendMail`, `errors$` — **P4, A8, F1, F2** | ⬜ | |
+| 2.5 | Page views: `urlAfterRedirects`, `takeUntilDestroyed`, not public, off on blooms.ai — **B3, B4, F5** | ⬜ | |
+| 2.6 | Delete `NgxBloomsightComponent`, `NgxBloomsightService` (**P2**), `NgxBloomsightModule` (**D7**), both 1.x services, `internal/bloomsight-init.ts` | ⬜ | |
+| 2.7 | Library tests rewritten for the new API: 100% per file, mutation-tested | ⬜ | |
+| 2.8 | Demo integration tests ported to the new API, F2 test flipped | ⬜ | |
+| 2.9 | Demo app stops importing the deleted module (minimal; §3 rebuilds it) | ⬜ | |
+| 2.10 | Remove the `Eager` flags and the five `extendedDiagnostics` suppressions; fix what surfaces — closes **RV10** | ⬜ | |
+| 2.11 | Gate: `build-lib`, demo build, `test:coverage`, `verify:compat` on 19–22 | ⬜ | |
+| 2.12 | Close the items in MODERNISATION.md | ⬜ | |
 
 ### 2.3 Invariants to preserve
 
@@ -429,6 +450,6 @@ Mirror what `bloomsight.js` ended up with; it has already been through this.
 5. ~~§1 phase 2~~ ✅ `bloomsight.js@0.9.2`, with the consumer-load gate
 6. ~~§1 phase 3 / §4~~ ✅ Vitest in, Karma and Zone.js out
 7. ~~§5 real tests~~ ✅ 31 library + 20 integration tests, 100% library coverage
-8. **Code review, then push** ← next. Then §2 API rewrite (F1–F6) → §3 demo
-   app → §6 CI and release → §7 docs
-9. Verification gate (§8), then publish 2.0.0
+8. ~~Code review, then push~~ ✅ (§5a)
+9. **§2 API rewrite** ← now. Then §3 demo app → §6 CI and release → §7 docs
+10. Verification gate (§8), then publish 2.0.0
