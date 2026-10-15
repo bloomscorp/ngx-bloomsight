@@ -43,7 +43,7 @@ describe('NgxBloomsightComponent', () => {
     // so an accidental revert to `standalone: false` fails loudly rather than
     // silently changing how consumers have to wire it up.
     const def = (NgxBloomsightComponent as any).ɵcmp;
-    expect(def.standalone).toBeTrue();
+    expect(def.standalone).toBe(true);
   });
 
   it('should render its template', () => {

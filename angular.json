@@ -125,11 +125,10 @@
           "defaultConfiguration": "production"
         },
         "test": {
-          "builder": "@angular-devkit/build-angular:karma",
+          "builder": "@angular/build:unit-test",
           "options": {
-            "main": "projects/bloomscorp/ngx-bloomsight/src/test.ts",
             "tsConfig": "projects/bloomscorp/ngx-bloomsight/tsconfig.spec.json",
-            "karmaConfig": "projects/bloomscorp/ngx-bloomsight/karma.conf.js"
+            "runner": "vitest"
           }
         }
       }

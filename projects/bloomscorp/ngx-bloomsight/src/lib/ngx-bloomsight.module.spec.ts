@@ -7,6 +7,8 @@ import { ModuleWithProviders } from '@angular/core';
 import {
   BloomsightConfig,
   BloomsightError,
+  BloomsightEventService,
+  BloomsightMailService,
   NgxBloomsightModule
 } from '../public-api';
 
@@ -42,13 +44,16 @@ describe('NgxBloomsightModule.forRoot', () => {
     // forRoot(), which is why importing the module plainly leaves them
     // unresolvable. Asserted rather than described so the 2.0.0 rewrite has to
     // deal with it deliberately.
+    //
+    // Compared by identity, not by `Function.prototype.name`. The first version
+    // of this test matched names as strings, which held under Karma's webpack
+    // and broke the moment the suite moved to Vitest: esbuild renames decorated
+    // classes to `_BloomsightEventService`. A class's name is whatever the
+    // compiler or minifier leaves behind; the class itself is the contract.
     const providers = NgxBloomsightModule.forRoot(config).providers ?? [];
-    const names = providers
-      .map((p: any) => (typeof p === 'function' ? p.name : undefined))
-      .filter(Boolean);
 
-    expect(names).toContain('BloomsightEventService');
-    expect(names).toContain('BloomsightMailService');
+    expect(providers).toContain(BloomsightEventService);
+    expect(providers).toContain(BloomsightMailService);
   });
 
   it('should let an app configure a blooms.ai migration without importing the core', () => {
