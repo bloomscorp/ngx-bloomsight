@@ -106,7 +106,12 @@ same destination.
 `event.urlAfterRedirects`. Also removed a dead `sendEmail` import from the event
 service, which never sends mail.
 
-### B4. The router subscription is never released — ⏸️ deferred, see §1.1
+### B4. The router subscription is never released — ✅ fixed in 2.0.0
+
+**Fixed 2026-10-15** by the rewrite (RELEASE-2.0.0.md §2). The subscription
+now lives in the app initializer and ends with `takeUntilDestroyed` on the
+application's injector. A test proves the router stream has no observers once
+the app is destroyed.
 
 `pageViewObserver()` subscribes to `Router.events` and nothing ever
 unsubscribes. `OnInit` and `OnDestroy` are imported and the class implements
@@ -137,7 +142,11 @@ Two related things were wrong in the same config and are also fixed:
 - `requireCleanWorkingDir: false` plus `git add --all` swept unrelated work into
   the release commit. Now `true`, with a targeted `git add`.
 
-### B6. Importing the module without `forRoot()` provides nothing — ⏸️ deferred, see §1.1
+### B6. Importing the module without `forRoot()` provides nothing — ✅ fixed in 2.0.0
+
+**Fixed 2026-10-15.** The module is gone (D7). `BloomsightService` is
+`providedIn: 'root'`, so it always resolves, and if `provideBloomsight()` was
+never called it throws an error that names it, rather than `NullInjectorError`.
 
 `NgxBloomsightModule` declares and exports a component. The services and the
 `'bloomsightConfig'` token exist **only** in `forRoot()`. Import the module
@@ -149,13 +158,21 @@ diagnostic.
 the demo ever injects a service, which means **the demo exercises none of the
 library**.
 
-### B7. `forRoot()` in a lazy module double-initialises — ⏸️ deferred, see §1.1
+### B7. `forRoot()` in a lazy module double-initialises — ✅ fixed in 2.0.0
+
+**Fixed 2026-10-15.** There is no `forRoot()`. `provideBloomsight()` returns
+`EnvironmentProviders` and starts the SDK from an app initializer, which runs
+once per application.
 
 Nothing stops `forRoot()` being imported again in a lazily-loaded module, which
 creates a second set of services in the child injector — and therefore another
 `init()`. The usual `@Optional() @SkipSelf()` guard is absent.
 
-### B8. Nothing initialises unless a service happens to be injected — ⏸️ deferred, see §1.1
+### B8. Nothing initialises unless a service happens to be injected — ✅ fixed in 2.0.0
+
+**Fixed 2026-10-15.** The SDK starts when the app starts, whether or not
+anything injects the service. Tested both ways: the initializer starts it with
+no injection, and injecting the service alone starts nothing.
 
 Initialisation is a constructor side effect, so an app that never injects
 `BloomsightEventService` silently collects nothing. Tracking working depends on
@@ -164,6 +181,9 @@ injection order, which is not something a consumer should have to reason about.
 ---
 
 ## 1.1 Deferred: B4, B6, B7, B8 — why these are not being patched
+
+> **Resolved 2026-10-15**, as this section planned: all four went with the
+> design choice that caused them, in the 2.0.0 rewrite.
 
 **Decision, 2026-10-12.** These four stay open on purpose. They are not
 independent defects; they are four symptoms of one design choice, and patching
@@ -236,10 +256,10 @@ revisit.
 | | Issue |
 |---|---|
 | **P1** | ✅ **Fixed 2026-10-12.** All five deep imports removed; every core import now goes through the package root, and the published `index.d.ts` no longer references `dist/`. Two halves: *inward*, four `IConfig` imports moved to the root (needs 0.8.0, so the core peer went `>=0.7.0` → `>=0.8.0`) and the fifth, `EmailEngineTypeEnum`, was eliminated entirely with `Parameters<typeof sendEmail>[0]` — deriving the parameter type from the root-exported function, so no core release was needed. *Outward*, `BloomsightConfig` is now exported from `public-api.ts`, so a consuming app never needs to import the core to type `forRoot()`. Guarded by `ngx-bloomsight.module.spec.ts`, which imports only from `../public-api` and fails to compile if the surface regresses. |
-| **P2** | CLI scaffolding is public API: `NgxBloomsightComponent` renders *"ngx-bloomsight works!"*, `NgxBloomsightService` is an empty class. Both exported from `public-api.ts`. Still true — the component was made **standalone** at the Angular 19 step, but standalone scaffolding is still scaffolding. Delete both at 2.0.0. |
-| **P3** | `@Inject('bloomsightConfig')` — a **string** token. No type safety, and it collides with anything else using that string. |
-| **P4** | `sendMail()` takes seven positional arguments including `templateOwnerId` (an internal), plus success/error callbacks rather than an `Observable`. |
-| **P5** | No `provideBloomsight()`. `NgModule.forRoot()` is the only way in — and since the component went standalone at 19, this is now **the library's only remaining NgModule coupling**. A standalone app has to reach for `importProvidersFrom(NgxBloomsightModule.forRoot(config))`, which works but is the interop shim rather than the idiomatic path. |
+| **P2** | ✅ **Fixed 2026-10-15** — both deleted, and a test pins the runtime export list to `BLOOMSIGHT_CONFIG`, `BloomsightService`, `provideBloomsight`. *Was:* CLI scaffolding is public API: `NgxBloomsightComponent` renders *"ngx-bloomsight works!"*, `NgxBloomsightService` is an empty class. Both exported from `public-api.ts`. Still true — the component was made **standalone** at the Angular 19 step, but standalone scaffolding is still scaffolding. Delete both at 2.0.0. |
+| **P3** | ✅ **Fixed 2026-10-15** — `BLOOMSIGHT_CONFIG` is an `InjectionToken<BloomsightConfig>`, annotated explicitly so the published type does not expand to the core's `IConfig`. *Was:* `@Inject('bloomsightConfig')` — a **string** token. No type safety, and it collides with anything else using that string. |
+| **P4** | ✅ **Fixed 2026-10-15** — `sendMail(request)` takes named fields and returns a cold `Observable<void>`. **Correction:** `templateOwnerId` is *not* an internal — the standalone server needs it (it goes out as `userId`), so it stays, as a required field. *Was:* `sendMail()` takes seven positional arguments plus success/error callbacks rather than an `Observable`. |
+| **P5** | ✅ **Fixed 2026-10-15** — `provideBloomsight()` is the only way in, and the library has no NgModule left. *Was:* No `provideBloomsight()`. `NgModule.forRoot()` is the only way in — and since the component went standalone at 19, this is now **the library's only remaining NgModule coupling**. A standalone app has to reach for `importProvidersFrom(NgxBloomsightModule.forRoot(config))`, which works but is the interop shim rather than the idiomatic path. |
 | **P6** | ✅ **Fixed in `bloomsight.js` 2026-10-12** (`55ece65`), pending release as 0.9.0. The enum is now exported as a value from the core's root, and `sendEmail` accepts `EmailEngineTypeEnum | `${EmailEngineTypeEnum}`` so a plain `'GMAIL'` needs no cast. **Correction to what this entry used to claim:** it did *not* silently route mail to SMTP for the library itself — the minifier inlined the member comparison to a string literal, so internal routing was always correct. The breakage was entirely consumer-side: the enum was importable from nowhere. |
 
 ---
@@ -249,13 +269,13 @@ revisit.
 | | Current | Target |
 |---|---|---|
 | **A1** | ✅ **Done.** Angular **22.2.2**, TypeScript **6.0.3**, zone.js 0.15.1, Node 24.18.0 (was 14.2 / 4.7 / 0.11 / v20 pin). Nine majors, no `--force`, compatibility floor unmoved at 14.0.0 — see UPGRADE-LOG.md | — |
-| **A2** | 🟡 **Half done.** `NgxBloomsightComponent` is `standalone: true` as of the 19 step, verified not to raise the published compatibility floor, and covered by tests on both consumption paths. Configuration is still module-only — see P5 | standalone-first, `provideBloomsight()` |
-| **A3** | No SSR guard | `isPlatformBrowser` — `init()` currently runs during server render. **Also verify under zoneless:** Angular 21's `bootstrap-options-migration` added an explicit `provideZoneChangeDetection()` to the demo app, which shows the framework default is moving away from zones. Nothing in the library depends on change detection, but 2.0.0 should be tested under `provideExperimentalZonelessChangeDetection()` rather than assumed |
-| **A4** | Manual subscription handling | `takeUntilDestroyed` / `DestroyRef` |
+| **A2** | ✅ **Done 2026-10-15** — no component, no NgModule; configuration is `provideBloomsight()`. *Was:* 🟡 **Half done.** `NgxBloomsightComponent` is `standalone: true` as of the 19 step, verified not to raise the published compatibility floor, and covered by tests on both consumption paths. Configuration is still module-only — see P5 | standalone-first, `provideBloomsight()` |
+| **A3** | ✅ **Done 2026-10-15** — on the server nothing starts and every method is a no-op; `sendMail` completes rather than erroring, since an unhandled RxJS error can take down a Node process. The library's tests run zoneless (the Angular 22 TestBed default) and the demo app is zoneless (D6). *Was:* No SSR guard | `isPlatformBrowser` — `init()` currently runs during server render. **Also verify under zoneless:** Angular 21's `bootstrap-options-migration` added an explicit `provideZoneChangeDetection()` to the demo app, which shows the framework default is moving away from zones. Nothing in the library depends on change detection, but 2.0.0 should be tested under `provideExperimentalZonelessChangeDetection()` rather than assumed |
+| **A4** | ✅ **Done 2026-10-15** — `takeUntilDestroyed` (see B4). *Was:* Manual subscription handling | `takeUntilDestroyed` / `DestroyRef` |
 | **A5** | ✅ **Done** at the Angular 17 step by the `update-workspace-config` migration | `buildTarget` |
 | **A6** | ✅ **Done 2026-10-15.** The demo app builds with `@angular/build:application`, via the official `use-application-builder` migration, declined six times during the Angular upgrade and never forced. The library builds with `@angular/build:ng-packagr`. `@angular-devkit/build-angular` is removed from the workspace | — |
 | **A7** | ✅ **Done 2026-10-15.** Both projects test with `@angular/build:unit-test` + Vitest + jsdom; Karma, Jasmine and Zone.js are uninstalled. The `migrate-karma-to-vitest` schematic refuses library projects; the builder itself handles them when configured directly. Coverage via `npm run test:coverage` (v8 provider) | — |
-| **A8** | No signals | signals where they earn their place |
+| **A8** | ✅ **Decided 2026-10-15: no signals in the library.** Nothing in it is state a template reads; `errors$` is a stream of events, and an app that wants a signal writes `toSignal(bloomsight.errors$)`. *Was:* No signals | signals where they earn their place |
 
 ---
 
@@ -326,6 +346,12 @@ this.bloomsight.errors$.subscribe(e => this.logger.warn(e));
   has no page-view endpoint
 - the scaffolding component and empty service are deleted (P2)
 - everything imported from the core's package root (P1)
+
+> **Built 2026-10-15** (RELEASE-2.0.0.md §2.1 has the full decision table).
+> Where the result differs from this sketch: there is no `trackPageViews`
+> option — page views follow the router, and the existing `stopPageViewEvent`
+> is the off switch; `label` is gone (F1); `templateOwnerId` is required (P4);
+> and on blooms.ai the page-view notice is a debug-only log, not a warning.
 
 **Clean break at 2.0.0.** Every consumer is ours, so carrying the old DI contract
 costs more than it saves, and a major is honest about what changed.

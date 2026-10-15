@@ -12,13 +12,14 @@
 
 > **Live tracker.** Updated and committed as each task lands.
 >
-> **Now:** 🔄 §2, the API rewrite. Design settled (§2.1), including F1: `label` is dropped. Working through the §2.2 task table.
+> **Now:** §2, the API rewrite, is ✅ done and committed locally on `feat/2.0.0`, not yet pushed. Next: §3, the demo app rewrite.
 >
 > **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
 > `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released ·
 > **Vitest in, Karma and Zone.js out** (§1 Phase 3, §4) ·
 > **both services under test, library at 100% coverage** (§5) ·
-> **code review: 9 findings fixed, Angular 19–22 proven** (§5a)
+> **code review: 9 findings fixed, Angular 19–22 proven** (§5a) ·
+> **the 2.0.0 API: `provideBloomsight()` + one service, 1.x surface deleted** (§2)
 >
 > Legend: ✅ done · 🔄 in progress · ⬜ not started · ⛔ blocked
 
@@ -176,7 +177,7 @@ All local, on `feat/2.0.0`. Nothing is pushed or published in this phase.
 After Phase 3: §5 real tests, §2 API rewrite, §3 demo app, §6 CI and release,
 §7 docs.
 
-## 2. Library — the 2.0.0 API
+## 2. Library — the 2.0.0 API — ✅ done 2026-10-15
 
 ### 2.0 Findings from §5 that the rewrite must address
 
@@ -185,11 +186,11 @@ fixing one is a deliberate change that will flip that test.
 
 | # | Finding | Where | Pinned by |
 |---|---|---|---|
-| **F1** | **`label` is a dead parameter.** Accepted by `resolveSimpleEvent` / `resolveDataEvent` at every layer — this wrapper, the core's public API, and both the B1 and B2 implementations — and put in **no** payload by either backend. Callers reasonably believe it is recorded. Decide: drop it from the 2.0.0 API, or have the core send it | wrapper, core B1 + B2 | `b2-events` "does not send the label" |
-| **F2** | **Under `logOnly`, `sendMail` calls neither callback.** The core's `transferEmail` returns before sending, so a UI waiting on success or failure waits forever. The Observable-returning 2.0.0 `sendMail` should complete under `logOnly` | core `email-transmission.ts` | `b2-log-only` "never calls either mail callback" |
+| **F1** | ✅ **Resolved:** dropped (owner's decision). **`label` is a dead parameter.** Accepted by `resolveSimpleEvent` / `resolveDataEvent` at every layer — this wrapper, the core's public API, and both the B1 and B2 implementations — and put in **no** payload by either backend. Callers reasonably believe it is recorded. Decide: drop it from the 2.0.0 API, or have the core send it | wrapper, core B1 + B2 | `b2-events` "does not send the label" |
+| **F2** | ✅ **Resolved:** `sendMail` completes under `logOnly`. **Under `logOnly`, `sendMail` calls neither callback.** The core's `transferEmail` returns before sending, so a UI waiting on success or failure waits forever. The Observable-returning 2.0.0 `sendMail` should complete under `logOnly` | core `email-transmission.ts` | `b2-log-only` "never calls either mail callback" |
 | **F3** | **The core calls `window.matchMedia` without a guard**, in platform detection, while the checks beside it use `?.`. Where `matchMedia` is missing, `init()` throws, and the throw escapes this library's service constructor and breaks injection | core `platform.ts:97` | the jsdom stub in `src/test-setup.ts` |
 | **F4** | **A mail rejection with no `message` reports `undefined` instead of the intended fallback.** The core uses `isEmptyString(response.message)`, and `isEmptyString(undefined)` is `false` — the bmx-pastebox quirk documented and pinned there. This wrapper's `onError` takes no argument, so only direct core users see it | core `transmission.ts` + bmx-pastebox | — (masked by the wrapper) |
-| **F5** | **`pageViewObserver()` is public and subscribes again on every call.** The constructor already calls it, so a consumer calling it too gets every page view twice. Belongs with **B4** (the subscription is never released) | wrapper event service | — |
+| **F5** | ✅ **Resolved:** no longer public; the subscription lives in the initializer. **`pageViewObserver()` is public and subscribes again on every call.** The constructor already calls it, so a consumer calling it too gets every page view twice. Belongs with **B4** (the subscription is never released) | wrapper event service | — |
 | **F6** | **The mail service's `as unknown as` cast is now unnecessary, and its comment is out of date.** Core 0.9.2's `sendEmail` accepts plain `'GMAIL'` / `'CUSTOM_SMTP'` strings (the P6 fix), so the cast and the "enums are nominal" explanation can go — verify with the compiler when the file is rewritten | wrapper mail service | — |
 
 ### 2.1 The design — settled 2026-10-15
@@ -227,7 +228,7 @@ How each open question was settled, and why:
 | `sendMail` shape | Request object in, **cold** `Observable<void>` out: one emission then complete on success; errors with a `BloomsightError` (`code: 'MAIL_FAILED'`) on failure | Angular's convention (`HttpClient` is cold too), so nothing is sent until it is subscribed. Named fields remove the positional-string swap risk that §5 had to test for |
 | **F2** — `logOnly` mail | The Observable **emits and completes** once the core has the mail | `logOnly` means "behave normally, transmit nothing". A UI written for the real thing must not hang |
 | Server render (**A3**) | Nothing runs on the server: no `init()`, no router subscription, `track` is a no-op, `sendMail` completes without sending | There is no visitor on the server. Completing rather than erroring matters there: an unhandled RxJS error is rethrown asynchronously, which in Node can take down the server process |
-| `errors$` (**A8**) | Every failure the core reports through `onError`, plus `INIT_FAILED`. The app's own `onError` is still called. Mail failures go to that call's Observable only | One stream for monitoring; mail errors already have a caller waiting for them, and reporting them twice would double-count |
+| `errors$` (**A8**) | Every failure the core reports through `onError`, from the moment of subscribing — hot, like `Router.events`. The app's own `onError` is still called. Mail failures go to that call's Observable only. **`INIT_FAILED` is not on it** (changed while building): startup runs before any component exists to subscribe, so it goes to `onError` and the console | One stream for monitoring; mail errors already have a caller waiting for them, and reporting them twice would double-count. Replaying old failures to late subscribers was rejected: a second subscriber would re-report history |
 | An `errors` signal | **Not added** | `toSignal(bloomsight.errors$)` is one line in the app. A second surface for the same data has to be kept in step forever |
 | Page views on blooms.ai | The router is **not observed** at all. One log line, under `debug` or `isDevelopmentMode` only | blooms.ai has no page-view endpoint. A console *warning* on every page load of every migrated production site would be noise |
 | Init failure (**RV4**) | Still caught and reported, never thrown. **No retry** — initialisation now happens once per app start | A throwing app initializer would abort bootstrap, which is far worse than the 1.x constructor failure RV4 fixed |
@@ -245,27 +246,27 @@ stability tag read from `@angular/core@19.0.0`'s own declarations:
 
 | # | Task | Status | Notes |
 |---|---|---|---|
-| 2.1 | `BLOOMSIGHT_CONFIG` `InjectionToken` — **P3** | ⬜ | |
-| 2.2 | `provideBloomsight(config)` → `EnvironmentProviders` — **B6** | ⬜ | |
-| 2.3 | Init through `provideAppInitializer`, browser only — **B1, B7, B8, A3** | ⬜ | |
-| 2.4 | One root `BloomsightService`: `track`, `trackData`, `sendMail`, `errors$` — **P4, A8, F1, F2** | ⬜ | |
-| 2.5 | Page views: `urlAfterRedirects`, `takeUntilDestroyed`, not public, off on blooms.ai — **B3, B4, F5** | ⬜ | |
-| 2.6 | Delete `NgxBloomsightComponent`, `NgxBloomsightService` (**P2**), `NgxBloomsightModule` (**D7**), both 1.x services, `internal/bloomsight-init.ts` | ⬜ | |
-| 2.7 | Library tests rewritten for the new API: 100% per file, mutation-tested | ⬜ | |
-| 2.8 | Demo integration tests ported to the new API, F2 test flipped | ⬜ | |
-| 2.9 | Demo app stops importing the deleted module (minimal; §3 rebuilds it) | ⬜ | |
-| 2.10 | Remove the `Eager` flags and the five `extendedDiagnostics` suppressions; fix what surfaces — closes **RV10** | ⬜ | |
-| 2.11 | Gate: `build-lib`, demo build, `test:coverage`, `verify:compat` on 19–22 | ⬜ | |
-| 2.12 | Close the items in MODERNISATION.md | ⬜ | |
+| 2.1 | `BLOOMSIGHT_CONFIG` `InjectionToken` — **P3** | ✅ | Annotated explicitly: inferred, the published type expanded to the core's `IConfig` (§2.3) |
+| 2.2 | `provideBloomsight(config)` → `EnvironmentProviders` — **B6** | ✅ | |
+| 2.3 | Init through `provideAppInitializer`, browser only — **B1, B7, B8, A3** | ✅ | A throwing initializer would abort bootstrap, so failures are caught and reported (RV4) |
+| 2.4 | One root `BloomsightService`: `track`, `trackData`, `sendMail`, `errors$` — **P4, A8, F1, F2** | ✅ | `INIT_FAILED` left off `errors$` — see the table above |
+| 2.5 | Page views: `urlAfterRedirects`, `takeUntilDestroyed`, not public, off on blooms.ai — **B3, B4, F5** | ✅ | |
+| 2.6 | Delete `NgxBloomsightComponent`, `NgxBloomsightService` (**P2**), `NgxBloomsightModule` (**D7**), both 1.x services, `internal/bloomsight-init.ts` | ✅ | 12 files deleted |
+| 2.7 | Library tests rewritten for the new API: 100% per file, mutation-tested | ✅ | 51 tests across 3 files, 100% per file. 18 deliberate bugs put back one at a time: every one fails a test (one first failed only to compile, so it was redone as a change that compiles; it was still caught) |
+| 2.8 | Demo integration tests ported to the new API, F2 test flipped | ✅ | 25 tests. The F2 test now asserts the fix; new: `errors$` from a real server rejection, mail is cold, mail failures stay off `errors$`. 5 bugs put back against the real core: all caught |
+| 2.9 | Demo app stops importing the deleted module (minimal; §3 rebuilds it) | ✅ | The demo no longer references the library at all until §3 wires it back in; its bundle fell from 254.15 to 235.66 kB |
+| 2.10 | Remove the `Eager` flags and the five `extendedDiagnostics` suppressions; fix what surfaces — closes **RV10** | ✅ | Nothing surfaced: both checks look at templates, and the library has none left. Closes **RV10** |
+| 2.11 | Gate: `build-lib`, demo build, `test:coverage`, `verify:compat` on 19–22 | ✅ | All green. `verify:compat`'s consumer moved to the 2.0.0 API and uses every public symbol: 19.2.25, 20.3.34, 21.2.25, 22.2.3 all link and type-check |
+| 2.12 | Close the items in MODERNISATION.md | ✅ | B4, B6, B7, B8, P2–P5, A2–A4 closed; A8 decided (no signals) |
 
 ### 2.3 Invariants to preserve
 
-- [ ] **The facade rule** — nothing in a consuming app imports
+- [x] **The facade rule** — nothing in a consuming app imports
       `@bloomscorp/bloomsight.js`. Keep `BloomsightConfig`, `BloomsightError`
       and `BloomsightEmailEngine` exported, and keep the test that imports only
       from the public API
-- [ ] Public signatures reference **our** type names, never the core's
-- [ ] No deep imports into the core, in source **or** in the published types
+- [x] Public signatures reference **our** type names, never the core's
+- [x] No deep imports into the core, in source **or** in the published types
 
 ---
 
@@ -385,7 +386,7 @@ against real old compilers before anything else.
 | RV7 | `settle()` waits a fixed number of ticks, so tests could flake under load | ✅ | Positive checks wait on the observed condition with `vi.waitFor`. `settle()` is kept only for "nothing happened" checks, after a positive signal has proven the core is live. 10 consecutive runs: 10 passed |
 | RV8 | A `console.log` spy is not restored if an assertion fails | ✅ | `afterEach(vi.restoreAllMocks)` |
 | RV9 | `tsconfig.lib.json` still excludes the deleted `src/test.ts` | ✅ | Removed |
-| RV10 | The same diagnostic suppressions are copied into five tsconfigs | ⏸️ | Deferred on purpose: §2.2 removes all five, so consolidating them first is double work |
+| RV10 | The same diagnostic suppressions are copied into five tsconfigs | ✅ | Removed from all five in §2 (task 2.10), rather than consolidated first |
 
 ## 6. CI and release pipeline — T3, R1–R4
 
@@ -451,5 +452,6 @@ Mirror what `bloomsight.js` ended up with; it has already been through this.
 6. ~~§1 phase 3 / §4~~ ✅ Vitest in, Karma and Zone.js out
 7. ~~§5 real tests~~ ✅ 31 library + 20 integration tests, 100% library coverage
 8. ~~Code review, then push~~ ✅ (§5a)
-9. **§2 API rewrite** ← now. Then §3 demo app → §6 CI and release → §7 docs
-10. Verification gate (§8), then publish 2.0.0
+9. ~~§2 API rewrite~~ ✅
+10. **§3 demo app** ← next. Then §6 CI and release → §7 docs
+11. Verification gate (§8), then publish 2.0.0
