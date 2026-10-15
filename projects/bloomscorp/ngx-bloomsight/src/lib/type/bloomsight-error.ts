@@ -1,7 +1,8 @@
 import {IBloomsightError} from '@bloomscorp/bloomsight.js';
 
 /**
- * A failure reported by the SDK, as handed to `BloomsightConfig.onError`.
+ * A failure reported by the SDK: emitted by `BloomsightService.errors$`, handed
+ * to `BloomsightConfig.onError`, and the error of a failed `sendMail()`.
  *
  * Exported for the same reason as `BloomsightConfig`: without it, an app that
  * wants to route Bloomsight failures into its own monitoring has to import
@@ -11,7 +12,5 @@ import {IBloomsightError} from '@bloomscorp/bloomsight.js';
  *
  * Alias rather than redeclaration, as with `BloomsightConfig`: the core owns
  * the shape, this package owns the name.
- *
- * The 2.0.0 `errors$` observable (MODERNISATION.md §6) will emit this type.
  */
 export type BloomsightError = IBloomsightError;

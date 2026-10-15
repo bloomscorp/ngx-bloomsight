@@ -7,7 +7,7 @@ import {
 	bootConsumerApp, settle, stubNetwork
 } from './integration-harness';
 import {
-	BloomsightConfig, BloomsightError, BloomsightEventService
+	BloomsightConfig, BloomsightError, BloomsightService
 } from '../../../projects/bloomscorp/ngx-bloomsight/src/public-api';
 
 /**
@@ -39,7 +39,7 @@ describe('integration: an app on blooms.ai (target "blooms-ai")', () => {
 			const net = stubNetwork();
 			bootConsumerApp(config);
 
-			TestBed.inject(BloomsightEventService).resolveSimpleEvent('signup-clicked');
+			TestBed.inject(BloomsightService).track('signup-clicked');
 
 			await vi.waitFor(() => expect(net.to(INGEST_EVENT)).toHaveLength(1));
 			const sent = net.to(INGEST_EVENT);
@@ -54,7 +54,7 @@ describe('integration: an app on blooms.ai (target "blooms-ai")', () => {
 			const net = stubNetwork();
 			bootConsumerApp(config);
 
-			TestBed.inject(BloomsightEventService).resolveDataEvent('plan-selected', {plan: 'pro', seats: 5});
+			TestBed.inject(BloomsightService).trackData('plan-selected', {plan: 'pro', seats: 5});
 
 			await vi.waitFor(() => expect(net.to(INGEST_EVENT)).toHaveLength(1));
 			const sent = net.to(INGEST_EVENT);
@@ -68,7 +68,7 @@ describe('integration: an app on blooms.ai (target "blooms-ai")', () => {
 			const net = stubNetwork();
 			bootConsumerApp(config);
 
-			TestBed.inject(BloomsightEventService).resolveSimpleEvent('signup-clicked');
+			TestBed.inject(BloomsightService).track('signup-clicked');
 
 			await vi.waitFor(() => expect(net.to(INGEST_EVENT)).toHaveLength(1));
 			const body = net.to(INGEST_EVENT)[0]!.body as Record<string, unknown>;
@@ -78,27 +78,11 @@ describe('integration: an app on blooms.ai (target "blooms-ai")', () => {
 			expect(Number.isNaN(Date.parse(body['occurredAt'] as string))).toBe(false);
 		});
 
-		it('does not send the label — no backend has ever recorded it', async () => {
-			// Pinned, not endorsed. Both resolveSimpleEvent and resolveDataEvent
-			// accept a label at every layer — ngx-bloomsight, the core's public
-			// API, and both the B1 and B2 implementations — and none of them puts
-			// it in a payload. A caller passing one reasonably believes it is
-			// recorded. Whether to drop the parameter or start sending it is a
-			// 2.0.0 decision; until then this fails loudly if it changes.
-			const net = stubNetwork();
-			bootConsumerApp(config);
-
-			TestBed.inject(BloomsightEventService).resolveSimpleEvent('signup-clicked', 'hero-button');
-
-			await vi.waitFor(() => expect(net.to(INGEST_EVENT)).toHaveLength(1));
-			expect(JSON.stringify(net.to(INGEST_EVENT)[0]!.body)).not.toContain('hero-button');
-		});
-
 		it('honours apiBase, so a project can be pointed at staging first', async () => {
 			const net = stubNetwork();
 			bootConsumerApp(config);
 
-			TestBed.inject(BloomsightEventService).resolveSimpleEvent('signup-clicked');
+			TestBed.inject(BloomsightService).track('signup-clicked');
 
 			// `every` is true of an empty list, so first require that the event
 			// was actually sent (review RV6).
@@ -112,10 +96,10 @@ describe('integration: an app on blooms.ai (target "blooms-ai")', () => {
 			// tracks may still reach the old server.
 			const net = stubNetwork();
 			bootConsumerApp(config);
-			const events = TestBed.inject(BloomsightEventService);
+			const events = TestBed.inject(BloomsightService);
 
-			events.resolveSimpleEvent('signup-clicked');
-			events.resolveDataEvent('plan-selected', {plan: 'pro'});
+			events.track('signup-clicked');
+			events.trackData('plan-selected', {plan: 'pro'});
 
 			await vi.waitFor(() => expect(net.to(INGEST_EVENT)).toHaveLength(2));
 			await settle();
@@ -126,20 +110,19 @@ describe('integration: an app on blooms.ai (target "blooms-ai")', () => {
 	describe('page views', () => {
 
 		it('are not sent — blooms.ai has no page-view endpoint', async () => {
-			// The SDK turns pageViewObserver() into a no-op under B2. The wrapper
-			// still subscribes to the router; the request must simply never happen.
+			// The wrapper does not observe the router under B2 at all; whatever the
+			// reason, the request must never happen.
 			const net = stubNetwork();
 			bootConsumerApp(config);
-			const events = TestBed.inject(BloomsightEventService);
+			const events = TestBed.inject(BloomsightService);
 			const router = TestBed.inject(Router);
 
 			await router.navigateByUrl('/home');
 			await router.navigateByUrl('/about');
 			// Absence proves nothing unless the core is demonstrably alive in this
-			// test. (It initialises once per file, so its startup requests belong to
-			// whichever test ran first.) An explicit event must get through, and be
-			// the only thing that does.
-			events.resolveSimpleEvent('liveness-check');
+			// test, so an explicit event must get through, and be the only event
+			// that does.
+			events.track('liveness-check');
 
 			await vi.waitFor(() => expect(net.to(INGEST_EVENT)).toHaveLength(1));
 			await settle();
@@ -157,7 +140,7 @@ describe('integration: an app on blooms.ai (target "blooms-ai")', () => {
 				: undefined);
 			bootConsumerApp(config);
 
-			TestBed.inject(BloomsightEventService).resolveSimpleEvent('signup-clicked');
+			TestBed.inject(BloomsightService).track('signup-clicked');
 
 			await vi.waitFor(() => expect(errors).toContainEqual(expect.objectContaining({
 				code: 'ORIGIN_REJECTED',
@@ -170,10 +153,28 @@ describe('integration: an app on blooms.ai (target "blooms-ai")', () => {
 			stubNetwork((url) => url === INGEST_EVENT ? {networkError: true} : undefined);
 			bootConsumerApp(config);
 
-			TestBed.inject(BloomsightEventService).resolveSimpleEvent('signup-clicked');
+			TestBed.inject(BloomsightService).track('signup-clicked');
 
 			await vi.waitFor(() => expect(errors).toContainEqual(expect.objectContaining({
 				code: 'NETWORK_FAILURE',
+				eventToken: 'signup-clicked'
+			})));
+		});
+
+		it('reach errors$ too, for an app that subscribes instead of configuring onError', async () => {
+			stubNetwork((url) => url === INGEST_EVENT
+				? {status: 403, body: {success: false, code: 'ORIGIN_REJECTED', message: 'origin not allowed'}}
+				: undefined);
+			bootConsumerApp(config);
+			const bloomsight = TestBed.inject(BloomsightService);
+			const reported: BloomsightError[] = [];
+			bloomsight.errors$.subscribe((e) => reported.push(e));
+
+			bloomsight.track('signup-clicked');
+
+			await vi.waitFor(() => expect(reported).toContainEqual(expect.objectContaining({
+				code: 'ORIGIN_REJECTED',
+				status: 403,
 				eventToken: 'signup-clicked'
 			})));
 		});
@@ -186,10 +187,10 @@ describe('integration: an app on blooms.ai (target "blooms-ai")', () => {
 				? {status: 403, body: {success: false, code: 'ORIGIN_REJECTED'}}
 				: undefined);
 			bootConsumerApp(config);
-			const events = TestBed.inject(BloomsightEventService);
+			const events = TestBed.inject(BloomsightService);
 
-			events.resolveSimpleEvent('first');
-			events.resolveSimpleEvent('second');
+			events.track('first');
+			events.track('second');
 
 			await vi.waitFor(() => expect(
 				errors.filter((e) => e.code === 'ORIGIN_REJECTED').map((e) => e.eventToken)

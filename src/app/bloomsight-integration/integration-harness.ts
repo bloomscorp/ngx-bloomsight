@@ -1,12 +1,12 @@
 import {vi} from 'vitest';
 import {Component} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
-import {provideRouter, Routes} from '@angular/router';
+import {provideRouter, Router, Routes} from '@angular/router';
 
 // Imported exactly as the demo app imports the library, and never from
 // '@bloomscorp/bloomsight.js': these tests are a consumer, and a consumer must
 // not need the core (the facade rule, MODERNISATION.md §2).
-import {BloomsightConfig, NgxBloomsightModule} from '../../../projects/bloomscorp/ngx-bloomsight/src/public-api';
+import {BloomsightConfig, provideBloomsight} from '../../../projects/bloomscorp/ngx-bloomsight/src/public-api';
 
 /**
  * Shared support for the demo app's integration tests.
@@ -17,8 +17,10 @@ import {BloomsightConfig, NgxBloomsightModule} from '../../../projects/bloomscor
  * cover the wrapper and the core together, which neither unit suite can.
  *
  * Each scenario lives in its own spec file because the core holds its
- * configuration in module state and initialises once per page. `isolate: true`
- * in angular.json gives every file a fresh module graph, i.e. a fresh page.
+ * configuration in module state, so one page can hold only one configuration.
+ * `isolate: true` in angular.json gives every file a fresh module graph, i.e. a
+ * fresh page. Within a file, every test starts a fresh app, and so starts the
+ * SDK again, as a reload would.
  */
 
 export const API_BASE = 'https://staging.bloomsight.test';
@@ -92,12 +94,17 @@ export const routes: Routes = [
 	{path: 'old-home', redirectTo: 'home'}
 ];
 
-/** Configure TestBed the way a real app wires the library in. */
+/**
+ * Configure TestBed the way a real app wires the library in, and start it.
+ *
+ * The first `inject` creates the test module, which runs the app initializers —
+ * so, as in a real app, the SDK has started before the test touches anything.
+ */
 export function bootConsumerApp(config: BloomsightConfig): void {
 	TestBed.configureTestingModule({
-		imports: [NgxBloomsightModule.forRoot(config)],
-		providers: [provideRouter(routes)]
+		providers: [provideRouter(routes), provideBloomsight(config)]
 	});
+	TestBed.inject(Router);
 }
 
 /** Let pending fetches and their promise chains settle. */

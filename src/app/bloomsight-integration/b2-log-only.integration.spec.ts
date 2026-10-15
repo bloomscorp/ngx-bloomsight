@@ -6,7 +6,7 @@ import {
 	bootConsumerApp, settle, stubNetwork
 } from './integration-harness';
 import {
-	BloomsightConfig, BloomsightEventService, BloomsightMailService
+	BloomsightConfig, BloomsightMailRequest, BloomsightService
 } from '../../../projects/bloomscorp/ngx-bloomsight/src/public-api';
 
 /**
@@ -29,6 +29,10 @@ const config: BloomsightConfig = {
 	apiBase: API_BASE,
 	logOnly: true
 };
+
+function mail(): BloomsightMailRequest {
+	return {engineId: 'engine', templateId: 'template', templateOwnerId: 'owner', data: new FormData()};
+}
 
 /** Every console.log line the core has written, flattened to strings. */
 function logLines(log: ReturnType<typeof vi.spyOn>): string[] {
@@ -53,10 +57,10 @@ describe('integration: logOnly', () => {
 	it('sends no simple or data events', async () => {
 		const net = stubNetwork();
 		bootConsumerApp(config);
-		const events = TestBed.inject(BloomsightEventService);
+		const events = TestBed.inject(BloomsightService);
 
-		events.resolveSimpleEvent('signup-clicked');
-		events.resolveDataEvent('plan-selected', {plan: 'pro'});
+		events.track('signup-clicked');
+		events.trackData('plan-selected', {plan: 'pro'});
 
 		await vi.waitFor(() => {
 			expect(logLines(log)).toContainEqual(expect.stringMatching(/logOnly: would have sent simple event.*signup-clicked/));
@@ -70,7 +74,7 @@ describe('integration: logOnly', () => {
 		const net = stubNetwork();
 		bootConsumerApp(config);
 
-		TestBed.inject(BloomsightMailService).sendMail('engine', 'template', 'owner', new FormData(), vi.fn(), vi.fn());
+		TestBed.inject(BloomsightService).sendMail(mail()).subscribe();
 
 		// Proof sendMail reached the core: it logs the payload in development mode
 		// immediately before transferEmail's logOnly early return (review RV5).
@@ -79,22 +83,21 @@ describe('integration: logOnly', () => {
 		expect(net.toHost(B1_HOST)).toHaveLength(0);
 	});
 
-	it('never calls either mail callback — a known gap, pinned', async () => {
-		// Under logOnly the core's transferEmail returns before sending and calls
-		// neither onSuccess nor onError. Any UI that waits on one of them — a
-		// "sending…" state, a disabled submit button — waits forever. Pinned so a
-		// fix is a deliberate change; the 2.0.0 sendMail returns an Observable
-		// and should complete under logOnly instead (F2).
+	it('still finishes the mail call, so a waiting UI is released (F2)', async () => {
+		// The core's transferEmail returns before sending under logOnly and calls
+		// neither of its callbacks. In 1.x that left any "sending…" state waiting
+		// forever. The wrapper now finishes the call itself.
 		stubNetwork();
 		bootConsumerApp(config);
-		const onSuccess = vi.fn();
-		const onError = vi.fn();
+		const seen: string[] = [];
 
-		TestBed.inject(BloomsightMailService).sendMail('engine', 'template', 'owner', new FormData(), onSuccess, onError);
+		TestBed.inject(BloomsightService).sendMail(mail()).subscribe({
+			next: () => seen.push('next'),
+			error: () => seen.push('error'),
+			complete: () => seen.push('complete')
+		});
 
 		await vi.waitFor(() => expect(logLines(log)).toContainEqual(expect.stringMatching(/^email data:/)));
-		await settle();
-		expect(onSuccess).not.toHaveBeenCalled();
-		expect(onError).not.toHaveBeenCalled();
+		expect(seen).toEqual(['next', 'complete']);
 	});
 });

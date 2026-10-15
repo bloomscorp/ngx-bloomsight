@@ -1,12 +1,13 @@
 import {vi} from 'vitest';
 import {TestBed} from '@angular/core/testing';
+import {firstValueFrom} from 'rxjs';
 
 import {
-	API_BASE, GMAIL_SEND, PROPERTY_TOKEN, SMTP_SEND,
+	API_BASE, B1_HOST, GMAIL_SEND, PROPERTY_TOKEN, SMTP_SEND,
 	bootConsumerApp, stubNetwork
 } from './integration-harness';
 import {
-	BloomsightConfig, BloomsightMailService
+	BloomsightConfig, BloomsightError, BloomsightMailRequest, BloomsightService
 } from '../../../projects/bloomscorp/ngx-bloomsight/src/public-api';
 
 /**
@@ -28,6 +29,10 @@ function form(fields: Record<string, string>): FormData {
 	return data;
 }
 
+function mail(overrides: Partial<BloomsightMailRequest> = {}): BloomsightMailRequest {
+	return {engineId: 'engine-1', templateId: 'template-2', templateOwnerId: 'owner-3', data: form({}), ...overrides};
+}
+
 describe('integration: mail', () => {
 
 	afterEach(() => vi.unstubAllGlobals());
@@ -36,10 +41,10 @@ describe('integration: mail', () => {
 		const net = stubNetwork();
 		bootConsumerApp(config);
 
-		TestBed.inject(BloomsightMailService).sendMail('engine-1', 'template-2', 'owner-3', form({name: 'Asha'}), vi.fn(), vi.fn());
+		await firstValueFrom(TestBed.inject(BloomsightService).sendMail(mail()));
 
-		await vi.waitFor(() => expect(net.to(GMAIL_SEND)).toHaveLength(1));
 		const sent = net.to(GMAIL_SEND);
+		expect(sent).toHaveLength(1);
 		expect(sent[0]!.method).toBe('POST');
 		expect(net.to(SMTP_SEND)).toHaveLength(0);
 	});
@@ -50,9 +55,9 @@ describe('integration: mail', () => {
 		const net = stubNetwork();
 		bootConsumerApp(config);
 
-		TestBed.inject(BloomsightMailService).sendMail('engine-1', 'template-2', 'owner-3', form({}), vi.fn(), vi.fn(), 'CUSTOM_SMTP');
+		await firstValueFrom(TestBed.inject(BloomsightService).sendMail(mail({engine: 'CUSTOM_SMTP'})));
 
-		await vi.waitFor(() => expect(net.to(SMTP_SEND)).toHaveLength(1));
+		expect(net.to(SMTP_SEND)).toHaveLength(1);
 		expect(net.to(GMAIL_SEND)).toHaveLength(0);
 	});
 
@@ -60,13 +65,10 @@ describe('integration: mail', () => {
 		const net = stubNetwork();
 		bootConsumerApp(config);
 
-		TestBed.inject(BloomsightMailService).sendMail(
-			'engine-1', 'template-2', 'owner-3',
-			form({name: 'Asha', email: 'asha@example.com'}),
-			vi.fn(), vi.fn()
-		);
+		await firstValueFrom(TestBed.inject(BloomsightService).sendMail(
+			mail({data: form({name: 'Asha', email: 'asha@example.com'})})
+		));
 
-		await vi.waitFor(() => expect(net.to(GMAIL_SEND)).toHaveLength(1));
 		const body = net.to(GMAIL_SEND)[0]!.body as FormData;
 		expect(body).toBeInstanceOf(FormData);
 		expect(body.get('engineId')).toBe('engine-1');
@@ -77,39 +79,59 @@ describe('integration: mail', () => {
 		expect(body.get('metadata[email]')).toBe('asha@example.com');
 	});
 
-	it('calls onSuccess when the server accepts the mail', async () => {
+	it('sends nothing until the caller subscribes', async () => {
+		// Cold, like HttpClient. Proven against the network rather than a mock:
+		// building the request must not send it.
+		const net = stubNetwork();
+		bootConsumerApp(config);
+		const pending = TestBed.inject(BloomsightService).sendMail(mail());
+
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(net.to(GMAIL_SEND)).toHaveLength(0);
+
+		await firstValueFrom(pending);
+		expect(net.to(GMAIL_SEND)).toHaveLength(1);
+	});
+
+	it('emits and completes when the server accepts the mail', async () => {
 		stubNetwork(() => ({body: {success: true}}));
 		bootConsumerApp(config);
-		const onSuccess = vi.fn();
-		const onError = vi.fn();
+		const complete = vi.fn();
 
-		TestBed.inject(BloomsightMailService).sendMail('e', 't', 'o', form({}), onSuccess, onError);
+		TestBed.inject(BloomsightService).sendMail(mail()).subscribe({complete});
 
-		await vi.waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
-		expect(onError).not.toHaveBeenCalled();
+		await vi.waitFor(() => expect(complete).toHaveBeenCalledTimes(1));
 	});
 
-	it('calls onError when the server rejects the mail', async () => {
+	it('errors with MAIL_FAILED when the server rejects the mail', async () => {
 		stubNetwork(() => ({body: {success: false, message: 'template not found'}}));
 		bootConsumerApp(config);
-		const onSuccess = vi.fn();
-		const onError = vi.fn();
 
-		TestBed.inject(BloomsightMailService).sendMail('e', 't', 'o', form({}), onSuccess, onError);
+		const error = await firstValueFrom(TestBed.inject(BloomsightService).sendMail(mail())).catch((e: BloomsightError) => e);
 
-		await vi.waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
-		expect(onSuccess).not.toHaveBeenCalled();
+		expect(error).toMatchObject({code: 'MAIL_FAILED'});
 	});
 
-	it('calls onError when the server cannot be reached', async () => {
+	it('errors with MAIL_FAILED when the server cannot be reached', async () => {
 		stubNetwork(() => ({networkError: true}));
 		bootConsumerApp(config);
-		const onSuccess = vi.fn();
-		const onError = vi.fn();
 
-		TestBed.inject(BloomsightMailService).sendMail('e', 't', 'o', form({}), onSuccess, onError);
+		const error = await firstValueFrom(TestBed.inject(BloomsightService).sendMail(mail())).catch((e: BloomsightError) => e);
 
-		await vi.waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
-		expect(onSuccess).not.toHaveBeenCalled();
+		expect(error).toMatchObject({code: 'MAIL_FAILED'});
+	});
+
+	it('keeps mail failures off errors$, where they would be counted twice', async () => {
+		// Only the mail server is down. Failing every URL would also fail the
+		// SDK's own startup request, which does belong on errors$.
+		stubNetwork((url) => url.startsWith(B1_HOST) ? {networkError: true} : undefined);
+		bootConsumerApp(config);
+		const bloomsight = TestBed.inject(BloomsightService);
+		const reported: BloomsightError[] = [];
+		bloomsight.errors$.subscribe((e) => reported.push(e));
+
+		await firstValueFrom(bloomsight.sendMail(mail())).catch(() => undefined);
+
+		expect(reported).toEqual([]);
 	});
 });

@@ -70,17 +70,28 @@ for (const f of readdirSync(dir).filter((n) => n.endsWith('.mjs'))) {
 `;
 
 const CONSUMER = `
+import {inject} from '@angular/core';
+import {Observable} from 'rxjs';
 import {
-	BloomsightConfig, BloomsightError, BloomsightEmailEngine,
-	BloomsightEventService, BloomsightMailService, NgxBloomsightComponent, NgxBloomsightModule
+	BLOOMSIGHT_CONFIG, BloomsightConfig, BloomsightEmailEngine, BloomsightError,
+	BloomsightEventData, BloomsightMailRequest, BloomsightService, provideBloomsight
 } from '@bloomscorp/ngx-bloomsight';
 const config: BloomsightConfig = {
 	propertyToken: 'p', isDevelopmentMode: false, target: 'blooms-ai',
 	onError: (e: BloomsightError) => void e.code
 };
-export const providers = NgxBloomsightModule.forRoot(config);
+export const providers = [provideBloomsight(config)];
 export const engine: BloomsightEmailEngine = 'CUSTOM_SMTP';
-export type Services = [BloomsightEventService, BloomsightMailService, NgxBloomsightComponent];
+export function useBloomsight(): Observable<void> {
+	const bloomsight: BloomsightService = inject(BloomsightService);
+	const data: BloomsightEventData = {plan: 'pro'};
+	const mail: BloomsightMailRequest = {engineId: 'e', templateId: 't', templateOwnerId: 'o', data: new FormData(), engine};
+	const target: BloomsightConfig['target'] = inject(BLOOMSIGHT_CONFIG).target;
+	bloomsight.track(String(target));
+	bloomsight.trackData('plan-selected', data);
+	bloomsight.errors$.subscribe((e: BloomsightError) => void e.message);
+	return bloomsight.sendMail(mail);
+}
 `;
 
 const majors = process.argv.slice(2).map(Number).filter(Boolean);

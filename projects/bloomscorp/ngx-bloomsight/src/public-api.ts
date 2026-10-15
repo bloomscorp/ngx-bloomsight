@@ -7,11 +7,11 @@
  * something.
  */
 
-export * from './lib/ngx-bloomsight.service';
-export * from './lib/ngx-bloomsight.component';
-export * from './lib/ngx-bloomsight.module';
-export * from './lib/service/bloomsight-event.service';
-export * from './lib/service/bloomsight-mail.service';
-export * from './lib/type/bloomsight-email-engine';
+export * from './lib/provide-bloomsight';
+export * from './lib/bloomsight-config.token';
+export * from './lib/bloomsight.service';
 export * from './lib/type/bloomsight-config';
 export * from './lib/type/bloomsight-error';
+export * from './lib/type/bloomsight-email-engine';
+export * from './lib/type/bloomsight-event-data';
+export * from './lib/type/bloomsight-mail-request';

@@ -6,7 +6,7 @@ import {
 	bootConsumerApp, settle, stubNetwork
 } from './integration-harness';
 import {
-	BloomsightConfig, BloomsightEventService
+	BloomsightConfig, BloomsightService
 } from '../../../projects/bloomscorp/ngx-bloomsight/src/public-api';
 
 /**
@@ -29,10 +29,10 @@ describe('integration: stopSimpleEvent', () => {
 	it('suppresses simple events and still sends data events', async () => {
 		const net = stubNetwork();
 		bootConsumerApp(config);
-		const events = TestBed.inject(BloomsightEventService);
+		const events = TestBed.inject(BloomsightService);
 
-		events.resolveSimpleEvent('signup-clicked');
-		events.resolveDataEvent('plan-selected', {plan: 'pro'});
+		events.track('signup-clicked');
+		events.trackData('plan-selected', {plan: 'pro'});
 
 		// The data event arriving proves the core is live; only then does the
 		// absence of the simple event mean anything.
