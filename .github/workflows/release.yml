@@ -1,0 +1,125 @@
+name: Release
+
+# Triggered by the tag that `npm run release` creates and pushes. Everything
+# that used to be manual (R1) happens here, on a fresh checkout:
+#
+#   • every gate again — a tag must never publish what does not build and test
+#   • npm publish, from dist/, with provenance
+#   • the GitHub release, which needs GITHUB_TOKEN — provided inside Actions,
+#     and absent on a laptop, which is why releases kept half-finishing (R2)
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write      # create the GitHub release
+  id-token: write      # mints the OIDC token npm trusts, and signs provenance
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      HUSKY: 0
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          # Required so npm knows which registry the OIDC token is for. No
+          # NODE_AUTH_TOKEN is set anywhere — see the publish step.
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm >= 11.5.1. Node 24.18 bundles 11.16, so
+      # this checks rather than upgrades — and fails loudly if `.node-version`
+      # is ever moved to a Node whose npm is too old.
+      - name: npm is new enough for trusted publishing
+        run: |
+          npm -v
+          node -e "
+            const [a, b, c] = process.argv[1].split('.').map(Number);
+            if (a < 11 || (a === 11 && (b < 5 || (b === 5 && c < 1)))) {
+              console.error('npm ' + process.argv[1] + ' is older than 11.5.1, which trusted publishing needs');
+              process.exit(1);
+            }" "$(npm -v)"
+
+      - run: npm ci
+
+      # The same gates as CI.
+      - name: Build
+        run: npm run build
+
+      - name: Test, with coverage thresholds
+        run: npm run test:coverage
+
+      - name: Library and workspace versions agree
+        run: npm run check-version
+
+      - name: Facade rule
+        run: npm run verify:facade
+
+      - name: Packaging gate
+        run: npm run verify:package
+
+      - name: Every Angular major in the peer range links and compiles it
+        run: npm run verify:compat
+
+      # The tag, the workspace and the published manifest must all agree, or
+      # npm serves a version the git history does not describe (B5).
+      - name: Check the tag matches the version being published
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./dist/bloomscorp/ngx-bloomsight/package.json').version")"
+          echo "tag=$TAG published=$PKG"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::tag v$TAG does not match the built package's version $PKG"
+            exit 1
+          fi
+
+      # Published via an npm **trusted publisher** (OIDC), configured on the
+      # package to accept this repository and this workflow file. npm mints a
+      # short-lived token from the `id-token` permission above, so there is no
+      # NPM_TOKEN secret to store, rotate or have silently expire.
+      #
+      # From dist/, which is the package: ng-packagr's output, with the library's
+      # own package.json. A prerelease version (2.1.0-rc.1) goes to the `next`
+      # dist-tag, so it never becomes `latest` by accident.
+      - name: Publish to npm
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          DIST_TAG=latest
+          case "$VERSION" in *-*) DIST_TAG=next ;; esac
+          npm publish ./dist/bloomscorp/ngx-bloomsight --provenance --access public --tag "$DIST_TAG"
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          PRERELEASE=""
+          case "$VERSION" in *-*) PRERELEASE="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" $PRERELEASE \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Published to npm as \`@bloomscorp/ngx-bloomsight@$VERSION\`.
+
+          \`\`\`bash
+          npm install @bloomscorp/ngx-bloomsight@$VERSION @bloomscorp/bloomsight.js
+          \`\`\`
+
+          See CHANGELOG.md for what changed."
+
+      - name: Summary
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          {
+            echo "### Published \`@bloomscorp/ngx-bloomsight@$V\`"
+            echo
+            echo "- npm: https://www.npmjs.com/package/@bloomscorp/ngx-bloomsight/v/$V"
+            echo "- release: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}"
+          } >> "$GITHUB_STEP_SUMMARY"

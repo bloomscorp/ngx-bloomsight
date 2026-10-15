@@ -1,6 +1,25 @@
 {
   "name": "@bloomscorp/ngx-bloomsight",
   "version": "1.6.0",
+  "description": "Angular wrapper for bloomsight.js: provideBloomsight() and one BloomsightService for events, page views, mail and errors.",
+  "keywords": [
+    "angular",
+    "bloomsight",
+    "analytics",
+    "event-tracking",
+    "page-views",
+    "blooms-ai"
+  ],
+  "homepage": "https://github.com/bloomscorp/ngx-bloomsight#readme",
+  "bugs": {
+    "url": "https://github.com/bloomscorp/ngx-bloomsight/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bloomscorp/ngx-bloomsight.git"
+  },
+  "license": "MIT",
+  "sideEffects": false,
   "peerDependencies": {
     "@angular/common": ">=19.0.0 <23.0.0",
     "@angular/core": ">=19.0.0 <23.0.0",

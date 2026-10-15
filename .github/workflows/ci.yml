@@ -1,0 +1,62 @@
+name: CI
+
+# Nothing ran on push before this file existed (T3). Every gate the release
+# depends on now runs on every push to main or a feature branch, and on every
+# pull request, so a problem is visible long before anyone cuts a tag.
+on:
+  push:
+    branches: [main, 'feat/**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      # The `prepare` script installs husky git hooks, which are pointless in CI
+      # and fail in some checkout layouts.
+      HUSKY: 0
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The same Node as development (`.node-version`). Angular 22's CLI refuses
+      # anything older than 22.22.3 / 24.15.0.
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - run: npm ci
+
+      # Builds the library, then the demo app against the built library (T2).
+      - name: Build
+        run: npm run build
+
+      # Library and demo app. Coverage thresholds — 100% per library file — are
+      # enforced only on this script, not on plain `npm test`.
+      - name: Test, with coverage thresholds
+        run: npm run test:coverage
+
+      # The published version must be the tagged version (B5).
+      - name: Library and workspace versions agree
+        run: npm run check-version
+
+      # The demo app is the reference consumer, and a consumer never imports
+      # the core directly.
+      - name: Facade rule
+        run: npm run verify:facade
+
+      # Pack the library exactly as npm publish will, and check the tarball:
+      # files, manifest pointers, versions, provenance metadata, published types
+      # and declared dependencies.
+      - name: Packaging gate
+        run: npm run verify:package
+
+      # The proof behind the peer range: the packed tarball is linked and
+      # type-checked by the real compiler of every Angular major it claims.
+      # RV1 shipped a bundle Angular 19–21 could not link, and nothing else here
+      # would have noticed. Needs network.
+      - name: Every Angular major in the peer range links and compiles it
+        run: npm run verify:compat

@@ -27,7 +27,8 @@
     "check-version": "node scripts/sync-library-version.js --check",
     "test:coverage": "npm run build-lib && ng test --watch=false --coverage",
     "verify:compat": "node scripts/verify-angular-compat.mjs",
-    "verify:facade": "node scripts/verify-facade.mjs"
+    "verify:facade": "node scripts/verify-facade.mjs",
+    "verify:package": "node scripts/verify-package.mjs"
   },
   "private": true,
   "dependencies": {
@@ -44,14 +45,14 @@
     "@angular/build": "^22.2.2",
     "@angular/cli": "~22.2.2",
     "@angular/compiler-cli": "^22.2.2",
-    "@commitlint/cli": "^18.6.0",
-    "@commitlint/config-conventional": "^18.6.0",
-    "@release-it/conventional-changelog": "^8.0.1",
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
+    "@release-it/conventional-changelog": "^12.0.2",
     "@vitest/coverage-v8": "^4.1.11",
     "husky": "^9.0.10",
     "jsdom": "^30.1.2",
     "ng-packagr": "^22.2.4",
-    "release-it": "^17.0.3",
+    "release-it": "^21.1.1",
     "typescript": "~6.0.3",
     "vitest": "^4.1.11"
   }

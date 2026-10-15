@@ -1,7 +1,13 @@
 {
     "hooks": {
         "before:init": [
-            "git pull"
+            "git pull",
+            "npm run build",
+            "npm run test:coverage",
+            "npm run check-version",
+            "npm run verify:facade",
+            "npm run verify:package",
+            "npm run verify:compat"
         ],
         "after:bump": [
             "npm run sync-version",
