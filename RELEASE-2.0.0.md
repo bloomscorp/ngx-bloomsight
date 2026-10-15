@@ -13,7 +13,7 @@
 
 > **Live tracker.** Updated and committed as each task lands.
 >
-> **Now:** §1 is complete. Next up is §5, real tests for the two services, which then lets coverage thresholds be enforced.
+> **Now:** §5, task 5.1. Turning on test isolation.
 >
 > **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
 > `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released ·
@@ -305,30 +305,31 @@ Things this turned up, for whoever works on §3 and §5:
 - **Jasmine matchers fail at compile time**, not runtime — `toBeTrue()` is not on
   Vitest's `Assertion` type
 
-## 5. Tests — close T1 properly
+## 5. Tests — close T1 — 🔄 in progress
 
-Currently 9 tests, none of which exercise the **behaviour** of the two real
-services. That is the gap, and it matters because these tests are the safety net
-for everything above.
+Until now no test exercised the **behaviour** of the two services that do the
+real work, which is why library function coverage sits at 33%. Two kinds of
+test, because each proves something the other cannot:
 
-- [ ] Mock the core (`vi.mock('@bloomscorp/bloomsight.js')`) so service behaviour
-      is testable at all — this is what blocked T1 before
-- [ ] `init()` runs **exactly once** with the service injected many times, and
-      from multiple injectors — **B1, B7**
-- [ ] `init()` does **not** run on the server — **A3**
-- [ ] Page views: fires on `NavigationEnd`, uses `urlAfterRedirects`, dedupes
-      identical destinations, and **unsubscribes on destroy** — **B3, B4**
-- [ ] Page views no-op with exactly one warning under `target: 'blooms-ai'`
-- [ ] `sendMail` maps its object argument to the core's positional signature
-      correctly, including engine string values
-- [ ] `sendMail` Observable completes on success and errors on failure
-- [ ] `errors$` emits what the core's `onError` reports
-- [ ] Lazy-loaded providers do not re-initialise — **B7**
-- [ ] Public API completeness guard retained (the P1 regression test)
-- [ ] Demo app has its own tests, including a route-navigation page-view test
-- [ ] Zoneless test run — **D6**
+- **Library unit tests** mock the core (`vi.mock`, confirmed working under the
+  Angular builder) and assert that each service calls the right core function
+  with the right arguments
+- **Demo app integration tests** run the **real** core and stub only `fetch`,
+  so they assert on the actual network requests an app produces. They import
+  nothing from `@bloomscorp/bloomsight.js`, which keeps to the facade rule, and
+  they are written against the public API so they survive the §3 demo rewrite
 
----
+| # | Task | Status | Notes |
+|---|---|---|---|
+| 5.1 | Turn on test isolation (`isolate: true`) for both projects | ⬜ | Off by default. The core and the wrapper hold module-level state, which would leak between spec files |
+| 5.2 | `BloomsightEventService` unit tests | ⬜ | init with the injected config; page view on `NavigationEnd`, using `urlAfterRedirects`; same destination twice → one page view; other router events ignored; simple and data events forwarded, defaults included |
+| 5.3 | `BloomsightMailService` unit tests | ⬜ | Positional reordering into the core's signature; default engine `GMAIL`; `CUSTOM_SMTP` arrives as the plain string; callbacks reach the caller |
+| 5.4 | Init runs once with both services injected (**B1**) | ⬜ | |
+| 5.5 | Demo app integration tests, real core, `fetch` stubbed | ⬜ | B2 events reach the ingest endpoint with the right payload; page views are a no-op under B2; `logOnly` and the kill switches suppress sending; server errors surface through `onError`; GMAIL and SMTP mail hit their own endpoints |
+| 5.6 | Enforce coverage thresholds from the new baseline | ⬜ | Deferred from 3.10 until the services were under test |
+| 5.7 | Close T1 in MODERNISATION.md | ⬜ | |
+
+Then: code review of the branch, and push.
 
 ## 6. CI and release pipeline — T3, R1–R4
 
