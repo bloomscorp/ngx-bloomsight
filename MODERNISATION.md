@@ -297,7 +297,7 @@ revisit.
   (`projects/bloomscorp/ngx-bloomsight/src/public-api`), not by package name, so
   the built and published artifact is never smoke-tested. The `tsconfig` path
   mapping to `dist/` exists and is bypassed.
-- **T3** 🔄 **Built 2026-10-15** — `ci.yml` runs every gate on push to `main` and `feat/**` and on pull requests; green in a fresh-clone simulation, first real run pending a push. *Was:* No CI. Nothing runs on push.
+- **T3** ✅ **Closed 2026-10-15** — `ci.yml` runs every gate on push to `main` and `feat/**` and on pull requests. Its first run, on `feat/2.0.0`, passed. *Was:* No CI. Nothing runs on push.
 
 ---
 

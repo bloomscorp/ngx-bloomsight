@@ -12,7 +12,7 @@
 
 > **Live tracker.** Updated and committed as each task lands.
 >
-> **Now:** 🔄 §6 — everything built and green locally (6.1–6.8). Waiting on: a push for the first real CI run (6.9), then the npm trusted publisher (6.10, owner).
+> **Now:** 🔄 §6 — CI is live and green on GitHub (6.1–6.9). Waiting on: the npm trusted publisher for `@bloomscorp/ngx-bloomsight` (6.10, owner, guided).
 >
 > **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
 > `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released ·
@@ -497,7 +497,7 @@ the GitHub release.
 | 6.6 | Upgrade the release tooling: `release-it` 17 → 21, `@release-it/conventional-changelog` 8 → 12, `@commitlint/*` 18 → 21. Target: `npm audit` 0 | ✅ | `npm audit` **19 → 6**, all one dev-only chain (`release-it` → … → `basic-ftp`, GHSA-c475-qrg2-pj4r) with **no upstream fix** — accepted and documented in RELEASING.md rather than forced with a major-version override. `--omit=dev`: 0 |
 | 6.7 | `release-it --dry-run` computes **2.0.0** from the commits (the `feat!` / `BREAKING CHANGE`) | ✅ | `release-it` 21 computes **2.0.0** |
 | 6.8 | `RELEASING.md` for this repo | ✅ | |
-| 6.9 | Push; the first CI run on `feat/2.0.0` goes green | ⬜ | Every step already green in a fresh clone with `npm ci` and `CI=true` |
+| 6.9 | Push; the first CI run on `feat/2.0.0` goes green | ✅ | **Passed first time**, run 38769659037 on `d64641a` — after the same steps had passed in a fresh clone with `npm ci` and `CI=true` |
 | 6.10 | **You:** npm trusted publisher for `@bloomscorp/ngx-bloomsight` → `bloomscorp/ngx-bloomsight`, `release.yml`. Guided, one step at a time, when we get there | ⬜ | Blocks the publish only, not anything above |
 
 ## 7. Docs and consumer migration
