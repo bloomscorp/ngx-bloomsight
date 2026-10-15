@@ -199,3 +199,76 @@ describe('BloomsightEventService', () => {
 		});
 	});
 });
+
+describe('when the core fails to initialise (RV4)', () => {
+
+	const onError = vi.fn();
+	const failing: BloomsightConfig = {...config, onError};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		resetInitGuard();
+		vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		vi.mocked(core.init).mockImplementation(() => {
+			throw new TypeError('m.matchMedia is not a function');
+		});
+		TestBed.configureTestingModule({
+			providers: [
+				provideRouter(routes),
+				BloomsightEventService,
+				{provide: 'bloomsightConfig', useValue: failing}
+			]
+		});
+	});
+
+	afterEach(() => {
+		vi.mocked(core.init).mockReset();
+		vi.restoreAllMocks();
+	});
+
+	it('still constructs the service, so the host app keeps working', () => {
+		// Before the fix the TypeError escaped the constructor into DI, and
+		// anything injecting the service failed along with it.
+		expect(() => TestBed.inject(BloomsightEventService)).not.toThrow();
+	});
+
+	it('reports the failure through onError, with the cause', () => {
+		TestBed.inject(BloomsightEventService);
+
+		expect(onError).toHaveBeenCalledExactlyOnceWith({
+			code: 'INIT_FAILED',
+			message: 'bloomsight.js failed to initialise: m.matchMedia is not a function'
+		});
+		expect(console.error).toHaveBeenCalledTimes(1);
+	});
+
+	it('survives an onError handler that itself throws', () => {
+		onError.mockImplementationOnce(() => {
+			throw new Error('monitoring is down too');
+		});
+
+		expect(() => TestBed.inject(BloomsightEventService)).not.toThrow();
+	});
+
+	it('retries on the next attempt, and stops once one succeeds', () => {
+		// The flag used to be set before init() ran, so a single failure
+		// disabled tracking for the rest of the page.
+		TestBed.inject(BloomsightEventService);
+		expect(core.init).toHaveBeenCalledTimes(1);
+
+		vi.mocked(core.init).mockReset();               // the next attempt succeeds
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			providers: [provideRouter(routes), BloomsightEventService, {provide: 'bloomsightConfig', useValue: failing}]
+		});
+		TestBed.inject(BloomsightEventService);
+		expect(core.init).toHaveBeenCalledTimes(1);     // retried
+
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			providers: [provideRouter(routes), BloomsightEventService, {provide: 'bloomsightConfig', useValue: failing}]
+		});
+		TestBed.inject(BloomsightEventService);
+		expect(core.init).toHaveBeenCalledTimes(1);     // and not again after success
+	});
+});

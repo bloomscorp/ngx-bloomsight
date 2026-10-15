@@ -28,10 +28,44 @@ import {IConfig} from '@bloomscorp/bloomsight.js';
  */
 let initialised = false;
 
+/**
+ * Initialise the core once, and never let a failure escape.
+ *
+ * Both rules came out of code review (RV4):
+ *
+ * - **A failure must not break the host app.** This runs inside the services'
+ *   constructors, so an exception from the core's `init()` used to escape into
+ *   Angular's dependency injection, and whatever injected the service failed
+ *   to construct along with it. That is a real case, not a hypothetical one:
+ *   the core calls `window.matchMedia` unguarded, so it throws wherever that is
+ *   missing, as in jsdom-based tests (F3). An analytics SDK must never take down
+ *   the page it is measuring, so the failure is reported instead.
+ * - **The flag is set only once init has succeeded.** It used to be set before
+ *   calling `init()`, so one failure disabled tracking for the rest of the page,
+ *   permanently and silently. Now a later attempt, made by the next service
+ *   constructed, retries.
+ */
 export function initOnce(config: IConfig): void {
 	if (initialised) return;
-	initialised = true;
-	init(config);
+	try {
+		init(config);
+		initialised = true;
+	} catch (cause) {
+		reportInitFailure(config, cause);
+	}
+}
+
+function reportInitFailure(config: IConfig, cause: unknown): void {
+	const error = {
+		code: 'INIT_FAILED',
+		message: `bloomsight.js failed to initialise: ${cause instanceof Error ? cause.message : String(cause)}`
+	};
+	console.error('ngx-bloomsight:', error.message);
+	try {
+		config.onError?.(error);
+	} catch {
+		// A throwing handler must not turn a reported failure back into a crash.
+	}
 }
 
 /** Test seam. Module-level state would otherwise leak between specs. */
