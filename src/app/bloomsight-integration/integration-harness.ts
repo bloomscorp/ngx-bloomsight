@@ -6,7 +6,7 @@ import {provideRouter, Router, Routes} from '@angular/router';
 // Imported exactly as the demo app imports the library, and never from
 // '@bloomscorp/bloomsight.js': these tests are a consumer, and a consumer must
 // not need the core (the facade rule, MODERNISATION.md §2).
-import {BloomsightConfig, provideBloomsight} from '../../../projects/bloomscorp/ngx-bloomsight/src/public-api';
+import {BloomsightConfig, provideBloomsight} from '@bloomscorp/ngx-bloomsight';
 
 /**
  * Shared support for the demo app's integration tests.
@@ -26,6 +26,12 @@ import {BloomsightConfig, provideBloomsight} from '../../../projects/bloomscorp/
 export const API_BASE = 'https://staging.bloomsight.test';
 export const PROPERTY_TOKEN = '65d72f0b5e990c6028790156';
 export const INGEST_EVENT = `${API_BASE}/api/bloomsight/ingest/event`;
+
+/** The property pre-flight the SDK makes when it starts on blooms.ai. */
+export const PROPERTY_CHECK = `${API_BASE}/api/bloomsight/ingest/property/${PROPERTY_TOKEN}`;
+
+/** What blooms.ai answers it with for a healthy property on this page's host (jsdom's is localhost). */
+export const ACTIVE_PROPERTY = {name: 'localhost', status: 'active', verified: true};
 
 /** The standalone Bloomsight server (B1). Mail always goes here. */
 export const B1_HOST = 'https://footprint-api.bloomscorp.com';

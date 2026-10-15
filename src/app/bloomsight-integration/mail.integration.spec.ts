@@ -8,7 +8,7 @@ import {
 } from './integration-harness';
 import {
 	BloomsightConfig, BloomsightError, BloomsightMailRequest, BloomsightService
-} from '../../../projects/bloomscorp/ngx-bloomsight/src/public-api';
+} from '@bloomscorp/ngx-bloomsight';
 
 /**
  * Mail is not part of the blooms.ai migration: it always goes to the

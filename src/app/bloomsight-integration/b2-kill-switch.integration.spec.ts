@@ -7,7 +7,7 @@ import {
 } from './integration-harness';
 import {
 	BloomsightConfig, BloomsightService
-} from '../../../projects/bloomscorp/ngx-bloomsight/src/public-api';
+} from '@bloomscorp/ngx-bloomsight';
 
 /**
  * The per-kind kill switches. `stopSimpleEvent` must stop simple events and

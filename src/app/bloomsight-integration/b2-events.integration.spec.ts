@@ -8,7 +8,7 @@ import {
 } from './integration-harness';
 import {
 	BloomsightConfig, BloomsightError, BloomsightService
-} from '../../../projects/bloomscorp/ngx-bloomsight/src/public-api';
+} from '@bloomscorp/ngx-bloomsight';
 
 /**
  * An app that has switched to blooms.ai: `target: 'blooms-ai'`, pointed at a

@@ -7,7 +7,7 @@ import {
 } from './integration-harness';
 import {
 	BloomsightConfig, BloomsightMailRequest, BloomsightService
-} from '../../../projects/bloomscorp/ngx-bloomsight/src/public-api';
+} from '@bloomscorp/ngx-bloomsight';
 
 /**
  * `logOnly: true` — the switch for running a project against the SDK without
