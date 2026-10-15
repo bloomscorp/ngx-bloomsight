@@ -13,7 +13,7 @@
 
 > **Live tracker.** Updated and committed as each task lands.
 >
-> **Now:** §5 is complete. Next: code review of the branch, then push. After that, §2, the API rewrite, with F1–F6 as inputs.
+> **Now:** §5a, fixing the code review findings. RV1 (critical) first.
 >
 > **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
 > `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released ·
@@ -345,6 +345,25 @@ test, because each proves something the other cannot:
 | 5.7 | Close T1 in MODERNISATION.md | ✅ | T1 closed. Six findings, F1–F6, recorded in §2.0 as inputs to the API rewrite |
 
 Then: code review of the branch, and push.
+
+## 5a. Code review of the branch — 🔄 fixing findings
+
+A high-effort review of `main...feat/2.0.0` (33 commits) returned ten findings.
+The first overturned a conclusion from the Angular 22 step, so it was verified
+against real old compilers before anything else.
+
+| # | Finding | Status | Resolution |
+|---|---|---|---|
+| RV1 | **Critical.** The published component emitted `ChangeDetectionStrategy.Eager`. Linkers before Angular 22 have no `Eager` and fail with *"Unsupported change detection strategy"*. **Confirmed with Angular 19.2.25's real linker.** The 22 step's claim that this was safe was wrong: `minVersion` does not cover enum members | 🔄 | `changeDetection` removed from the published component; the fixed bundle links cleanly under Angular 19. Adding a permanent gate that links with **each** supported major's real linker |
+| RV2 | The peer range still says `>=14.2.0`, which is unprovable: the `.d.ts` uses a 9-argument `ɵɵComponentDeclaration`, and Angular 14's takes 8 | ⬜ | Apply **D2**: `>=19.0.0 <23.0.0`, proven by the RV1 gate (link + type-check per major) |
+| RV3 | The mail service's `as unknown as` cast switches off the compiler's check on the engine, and its comments have been false since core 0.9.2 (**F6**) | ⬜ | Alias `BloomsightEmailEngine` to the core's `EmailEngineType`, as `BloomsightConfig` aliases `IConfig`; pass the engine with no cast |
+| RV4 | If the core's `init()` throws, the error escapes the service constructor and breaks injection, and `initOnce` has already set its flag, so init never retries (the wrapper's half of **F3**) | ⬜ | Catch, report through `onError`, and set the flag only after success. The core-side `matchMedia` guard remains a core item |
+| RV5 | The `logOnly` "sends no mail" test cannot fail: it never proves `sendMail` reached the core | ⬜ | Assert the core's development-mode mail log |
+| RV6 | "honours apiBase" passes vacuously when nothing is sent | ⬜ | Require the ingest request |
+| RV7 | `settle()` waits a fixed number of ticks, so tests could flake under load | ⬜ | `vi.waitFor` on the observed condition; `settle()` kept only after a positive signal |
+| RV8 | A `console.log` spy is not restored if an assertion fails | ⬜ | `afterEach(vi.restoreAllMocks)` |
+| RV9 | `tsconfig.lib.json` still excludes the deleted `src/test.ts` | ⬜ | Remove |
+| RV10 | The same diagnostic suppressions are copied into five tsconfigs | ⏸️ | Deferred on purpose: §2.2 removes all five, so consolidating them first is double work |
 
 ## 6. CI and release pipeline — T3, R1–R4
 
