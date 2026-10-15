@@ -13,7 +13,7 @@
 
 > **Live tracker.** Updated and committed as each task lands.
 >
-> **Now:** §1 Phase 3, task 3.7. Moving the demo app to @angular/build:application.
+> **Now:** §1 Phase 3, task 3.9. Removing Karma, Jasmine and Zone.js.
 >
 > **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
 > `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released
@@ -164,9 +164,9 @@ All local, on `feat/2.0.0`. Nothing is pushed or published in this phase.
 | 3.4 | Library `test` target → `@angular/build:unit-test`, `runner: vitest` | ✅ | Spec tsconfig now uses vitest/globals types and no Karma bootstrap |
 | 3.5 | Convert Jasmine-only matchers | ✅ | toBeTrue() → toBe(true); the compiler caught it, as Vitest's Assertion type lacks it |
 | 3.6 | All library tests green under Vitest | ✅ | 9/9. One fix along the way: a test compared class names as strings, and esbuild renames decorated classes, so it now compares the classes themselves |
-| 3.7 | Demo app `build` → `@angular/build:application`, via the official `use-application-builder` migration (**A6**) | 🔄 | Declined six times during the Angular upgrade. Vitest needs it |
-| 3.8 | Demo app `test` target → Vitest, tests green | ⬜ | 3 tests |
-| 3.9 | Remove Karma: `karma`, `karma-*`, `jasmine-core`, `@types/jasmine`, `istanbul-lib-instrument`; both `karma.conf.js`; both `src/test.ts`; Jasmine types in the spec tsconfigs | ⬜ | |
+| 3.7 | Demo app `build` → `@angular/build:application`, via the official `use-application-builder` migration (**A6**) | ✅ | Done with the official migration. It also removed @angular-devkit/build-angular entirely. Output moved to dist/ngx-bloomsight/browser |
+| 3.8 | Demo app `test` target → Vitest, tests green | ✅ | 3/3. Needed two demo changes: zoneless (D6), since the builder's setup uses top-level await which Zone.js forbids, and a standalone AppComponent. Bundle 291.56 → 253.94 kB; verified booting in headless Chrome |
+| 3.9 | Remove Karma: `karma`, `karma-*`, `jasmine-core`, `@types/jasmine`, `istanbul-lib-instrument`; both `karma.conf.js`; both `src/test.ts`; Jasmine types in the spec tsconfigs | 🔄 |  |
 | 3.10 | Coverage reporting under Vitest | ⬜ | |
 | 3.11 | Sweep: no Karma or Jasmine references outside historical logs | ⬜ | |
 | 3.12 | Close out the docs: §4 here, **A6** and **A7** in MODERNISATION.md | ⬜ | |

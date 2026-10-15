@@ -16,13 +16,12 @@ import {AppComponent} from './app.component';
 import {NgxBloomsightModule} from '../../projects/bloomscorp/ngx-bloomsight/src/public-api';
 
 @NgModule({
-    declarations: [
-        AppComponent
-    ],
+    // AppComponent is standalone, so it is imported rather than declared.
     imports: [
         BrowserModule,
         AppRoutingModule,
-        NgxBloomsightModule
+        NgxBloomsightModule,
+        AppComponent
     ],
     providers: [],
     bootstrap: [AppComponent]
