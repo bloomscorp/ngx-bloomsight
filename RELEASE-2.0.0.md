@@ -12,7 +12,7 @@
 
 > **Live tracker.** Updated and committed as each task lands.
 >
-> **Now:** §3, the demo app rebuild, is ✅ done and committed locally, not yet pushed. Next: §6, CI and the release pipeline.
+> **Now:** 🔄 §6, CI and the release pipeline (§6.2 task table). §3 is pushed.
 >
 > **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
 > `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released ·
@@ -458,29 +458,47 @@ against real old compilers before anything else.
 | RV9 | `tsconfig.lib.json` still excludes the deleted `src/test.ts` | ✅ | Removed |
 | RV10 | The same diagnostic suppressions are copied into five tsconfigs | ✅ | Removed from all five in §2 (task 2.10), rather than consolidated first |
 
-## 6. CI and release pipeline — T3, R1–R4
+## 6. CI and release pipeline — T3, R1–R4 — 🔄 in progress
 
-Mirror what `bloomsight.js` ended up with; it has already been through this.
+Mirror what `bloomsight.js` ended up with: local `release-it` bumps, tags and
+pushes; the tag triggers CI, which runs every gate again on a fresh checkout,
+publishes through npm **trusted publishing** (OIDC, no stored token) and cuts
+the GitHub release.
 
-- [ ] `.github/workflows/ci.yml` — Node 24, `build-lib`, demo build, tests,
-      `check-version`, packaging gate. **T3** (nothing runs on push today)
-- [ ] `.github/workflows/release.yml` — npm **trusted publishing** (OIDC, no
-      stored token), GitHub release
-- [ ] **Packaging gate** asserting, on the real tarball: expected files present,
-      `module`/`typings` pointers resolve, **zero deep imports in the published
-      types**, `minVersion` as expected, peer ranges as declared
-- [ ] Fix `.release-it.json` — **R2** (`npm.publish: false` with
-      `github.release: true` and no token = half-finished releases), **R3**
-      (`requireCleanWorkingDir: false` plus `git add --all` sweeps unrelated work
-      into the release commit)
-- [ ] Keep the `sync-version` hook — **B5/R4**, the published version must be the
-      tagged version
-- [ ] `.node-version` (v24.18.0) respected in CI
-- [ ] **Upgrade the release tooling** (`release-it` 17, `@release-it/conventional-changelog` 8). As of 2026-10-15 `npm audit` on `feat/2.0.0` reports 19 issues (2 critical, 11 high), **all in dev-only tooling** and nearly all under `release-it`. The runtime tree that consumers install reports **0**. For comparison, GitHub flags 127 on `main`, which still has the Angular 14-era tree
-- [ ] CI must run `npm run test:coverage` (thresholds are not enforced by plain `npm test`) and `npm run verify:compat` (the proof behind the peer range)
-- [ ] CI must run `npm run verify:facade` (the demo app imports nothing from the core), and `npm run build`, which now builds the library first (T2)
+### 6.1 What is different here
 
----
+- **The package is published from `dist/bloomscorp/ngx-bloomsight`**, ng-packagr's
+  output, not from the repo root. The root `package.json` (`ngx-bloomsight`,
+  private) is the workspace; the library's own `package.json` is what npm sees.
+  `sync-version` keeps the two versions equal (B5)
+- **The library's `package.json` has no `repository` field.** npm verifies a
+  `--provenance` publish against it and **rejects** the publish if it does not
+  match the GitHub repository the workflow ran in. So it is added, with
+  `homepage`, `bugs`, `license` and `description`, which the npm page has never
+  shown
+- **R2 and R3 are already fixed** (`60ecc44`, with B5): `.release-it.json` has
+  `npm.publish: false` and `github.release: false` — both move to CI — and
+  `requireCleanWorkingDir: true` with no `git add --all`
+- **Node 24.18 bundles npm 11.16**, past trusted publishing's 11.5.1 minimum, so
+  the npm-upgrade step `bloomsight.js` needs on Node 20 is not needed. The
+  workflow asserts the version instead of upgrading
+- **CI runs on `feat/**` pushes too**, not only `main`, so the 2.0.0 branch is
+  checked before it is merged
+
+### 6.2 Tasks
+
+| # | Task | Status | Notes |
+|---|---|---|---|
+| 6.1 | Library `package.json`: `repository` (provenance needs it), `homepage`, `bugs`, `license`, `description`, `keywords`, `sideEffects: false` | ⬜ | |
+| 6.2 | **Packaging gate** `npm run verify:package`, on the real tarball: required files present, every manifest pointer resolves, no core deep imports or `dist/` paths in the types, no specs shipped, peers and version as declared, `repository` matches | ⬜ | `verify:compat` already installs that tarball and compiles it with each Angular major |
+| 6.3 | `.github/workflows/ci.yml` — **T3**: Node from `.node-version`, build, `test:coverage`, `check-version`, `verify:facade`, `verify:package`, `verify:compat` | ⬜ | |
+| 6.4 | `.github/workflows/release.yml` — **R1**: on a `v*` tag, the same gates, tag = both versions, `npm publish --provenance` from `dist/`, GitHub release | ⬜ | |
+| 6.5 | `.release-it.json`: run the gates in `before:init`, so a broken tree is never tagged | ⬜ | |
+| 6.6 | Upgrade the release tooling: `release-it` 17 → 21, `@release-it/conventional-changelog` 8 → 12, `@commitlint/*` 18 → 21. Target: `npm audit` 0 | ⬜ | |
+| 6.7 | `release-it --dry-run` computes **2.0.0** from the commits (the `feat!` / `BREAKING CHANGE`) | ⬜ | |
+| 6.8 | `RELEASING.md` for this repo | ⬜ | |
+| 6.9 | Push; the first CI run on `feat/2.0.0` goes green | ⬜ | |
+| 6.10 | **You:** npm trusted publisher for `@bloomscorp/ngx-bloomsight` → `bloomscorp/ngx-bloomsight`, `release.yml`. Guided, one step at a time, when we get there | ⬜ | Blocks the publish only, not anything above |
 
 ## 7. Docs and consumer migration
 
@@ -525,5 +543,5 @@ Mirror what `bloomsight.js` ended up with; it has already been through this.
 8. ~~Code review, then push~~ ✅ (§5a)
 9. ~~§2 API rewrite~~ ✅
 10. ~~§3 demo app~~ ✅
-11. **§6 CI and release** ← next. Then §7 docs
+11. **§6 CI and release** ← now. Then §7 docs
 12. Verification gate (§8), then publish 2.0.0
