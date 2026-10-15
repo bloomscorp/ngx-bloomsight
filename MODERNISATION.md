@@ -297,19 +297,19 @@ revisit.
   (`projects/bloomscorp/ngx-bloomsight/src/public-api`), not by package name, so
   the built and published artifact is never smoke-tested. The `tsconfig` path
   mapping to `dist/` exists and is bypassed.
-- **T3** No CI. Nothing runs on push.
+- **T3** 🔄 **Built 2026-10-15** — `ci.yml` runs every gate on push to `main` and `feat/**` and on pull requests; green in a fresh-clone simulation, first real run pending a push. *Was:* No CI. Nothing runs on push.
 
 ---
 
 ## 5. Release pipeline
 
-- **R1** No workflows. Publishing is a manual `cd dist/bloomscorp/ngx-bloomsight && npm publish`.
-- **R2** `npm.publish: false` with `github.release: true` and no token — the same
+- **R1** ✅ **Built 2026-10-15** — `release.yml` publishes from CI on a `v*` tag, via npm trusted publishing with provenance, after every gate (RELEASE-2.0.0.md §6). *Was:* No workflows. Publishing is a manual `cd dist/bloomscorp/ngx-bloomsight && npm publish`.
+- **R2** ✅ **Fixed** (`60ecc44`, with B5; the GitHub release moved to CI in §6). *Was:* `npm.publish: false` with `github.release: true` and no token — the same
   half-finished-release trap `bloomsight.js` had, where it commits and tags and
   then fails.
-- **R3** `requireCleanWorkingDir: false` plus `git add --all` in `before:init`,
+- **R3** ✅ **Fixed** (`60ecc44`). *Was:* `requireCleanWorkingDir: false` plus `git add --all` in `before:init`,
   which sweeps unrelated work into the release commit.
-- **R4** Plus **B5**: the version that gets published is not the one that gets
+- **R4** ✅ **Fixed** with B5, and now also checked in CI and against the tag at release. *Was:* Plus **B5**: the version that gets published is not the one that gets
   tagged.
 
 `bloomsight.js` has just been through all of this. Mirror what it ended up with:

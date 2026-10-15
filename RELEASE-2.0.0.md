@@ -12,7 +12,7 @@
 
 > **Live tracker.** Updated and committed as each task lands.
 >
-> **Now:** 🔄 §6, CI and the release pipeline (§6.2 task table). §3 is pushed.
+> **Now:** 🔄 §6 — everything built and green locally (6.1–6.8). Waiting on: a push for the first real CI run (6.9), then the npm trusted publisher (6.10, owner).
 >
 > **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
 > `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released ·
@@ -489,15 +489,15 @@ the GitHub release.
 
 | # | Task | Status | Notes |
 |---|---|---|---|
-| 6.1 | Library `package.json`: `repository` (provenance needs it), `homepage`, `bugs`, `license`, `description`, `keywords`, `sideEffects: false` | ⬜ | |
-| 6.2 | **Packaging gate** `npm run verify:package`, on the real tarball: required files present, every manifest pointer resolves, no core deep imports or `dist/` paths in the types, no specs shipped, peers and version as declared, `repository` matches | ⬜ | `verify:compat` already installs that tarball and compiles it with each Angular major |
-| 6.3 | `.github/workflows/ci.yml` — **T3**: Node from `.node-version`, build, `test:coverage`, `check-version`, `verify:facade`, `verify:package`, `verify:compat` | ⬜ | |
-| 6.4 | `.github/workflows/release.yml` — **R1**: on a `v*` tag, the same gates, tag = both versions, `npm publish --provenance` from `dist/`, GitHub release | ⬜ | |
-| 6.5 | `.release-it.json`: run the gates in `before:init`, so a broken tree is never tagged | ⬜ | |
-| 6.6 | Upgrade the release tooling: `release-it` 17 → 21, `@release-it/conventional-changelog` 8 → 12, `@commitlint/*` 18 → 21. Target: `npm audit` 0 | ⬜ | |
-| 6.7 | `release-it --dry-run` computes **2.0.0** from the commits (the `feat!` / `BREAKING CHANGE`) | ⬜ | |
-| 6.8 | `RELEASING.md` for this repo | ⬜ | |
-| 6.9 | Push; the first CI run on `feat/2.0.0` goes green | ⬜ | |
+| 6.1 | Library `package.json`: `repository` (provenance needs it), `homepage`, `bugs`, `license`, `description`, `keywords`, `sideEffects: false` | ✅ | Also ships `LICENSE.md` — a copy inside the library folder, since ng-packagr cannot reach outside it; the gate fails if it drifts |
+| 6.2 | **Packaging gate** `npm run verify:package`, on the real tarball: required files present, every manifest pointer resolves, no core deep imports or `dist/` paths in the types, no specs shipped, peers and version as declared, `repository` matches | ✅ | Proven by sabotage: removing the §2 type annotation, deleting `repository`, breaking `module` and dropping a peer are each caught. Strips comments first: its first run flagged a doc comment quoting the forbidden form |
+| 6.3 | `.github/workflows/ci.yml` — **T3**: Node from `.node-version`, build, `test:coverage`, `check-version`, `verify:facade`, `verify:package`, `verify:compat` | ✅ | |
+| 6.4 | `.github/workflows/release.yml` — **R1**: on a `v*` tag, the same gates, tag = both versions, `npm publish --provenance` from `dist/`, GitHub release | ✅ | Also: a prerelease tag publishes to `next`, never `latest`, and the npm version is asserted, not upgraded |
+| 6.5 | `.release-it.json`: run the gates in `before:init`, so a broken tree is never tagged | ✅ | |
+| 6.6 | Upgrade the release tooling: `release-it` 17 → 21, `@release-it/conventional-changelog` 8 → 12, `@commitlint/*` 18 → 21. Target: `npm audit` 0 | ✅ | `npm audit` **19 → 6**, all one dev-only chain (`release-it` → … → `basic-ftp`, GHSA-c475-qrg2-pj4r) with **no upstream fix** — accepted and documented in RELEASING.md rather than forced with a major-version override. `--omit=dev`: 0 |
+| 6.7 | `release-it --dry-run` computes **2.0.0** from the commits (the `feat!` / `BREAKING CHANGE`) | ✅ | `release-it` 21 computes **2.0.0** |
+| 6.8 | `RELEASING.md` for this repo | ✅ | |
+| 6.9 | Push; the first CI run on `feat/2.0.0` goes green | ⬜ | Every step already green in a fresh clone with `npm ci` and `CI=true` |
 | 6.10 | **You:** npm trusted publisher for `@bloomscorp/ngx-bloomsight` → `bloomscorp/ngx-bloomsight`, `release.yml`. Guided, one step at a time, when we get there | ⬜ | Blocks the publish only, not anything above |
 
 ## 7. Docs and consumer migration
