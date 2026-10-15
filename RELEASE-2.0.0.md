@@ -9,6 +9,17 @@
 >
 > Context: [UPGRADE-LOG.md](./UPGRADE-LOG.md) (the 14 → 22 climb, now complete).
 
+## ▶ Current status
+
+> **Live tracker.** Updated and committed as each task lands.
+>
+> **Now:** §1 Phase 3, task 3.1. Bumping the core to 0.9.2.
+>
+> **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
+> `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released
+>
+> Legend: ✅ done · 🔄 in progress · ⬜ not started · ⛔ blocked
+
 ---
 
 ## 0. Decisions — settled 2026-10-12
@@ -83,7 +94,12 @@ inherits it in turn — which is what makes Vitest fail.
 
 ---
 
-### Phase 1 — release `bmx-pastebox`
+### Phase 1 — release `bmx-pastebox` — ✅ done 2026-10-15
+
+> **Outcome.** `bmx-pastebox@1.1.0` is `latest` with provenance, published
+> through a validated trusted publisher. Its first CI run passed every gate.
+> The published tarball installs cleanly and loads by package name via both
+> `require` and `import`.
 
 Code is done and committed (`e742f20`). What remains is publishing it.
 
@@ -107,7 +123,12 @@ in git while npm served 1.0.17; the committed file now says 1.0.17.
 
 ---
 
-### Phase 2 — bump and release `bloomsight.js`
+### Phase 2 — bump and release `bloomsight.js` — ✅ done 2026-10-15
+
+> **Outcome.** `@bloomscorp/bloomsight.js@0.9.2` is `latest` with provenance,
+> depending on `bmx-pastebox@^1.1.0`. The new `verify:package` gate passed on
+> its first CI run. The published tarball (13 files) installs into a clean
+> project and loads via both `require` and `import`. 0.9.1 could do neither.
 
 - [ ] Push the 1 unpushed commit (`1a9ec3e`, the export-gate ordering fix)
 - [ ] Bump the dependency to `bmx-pastebox: ^1.1.0`
@@ -131,17 +152,27 @@ in git while npm served 1.0.17; the committed file now says 1.0.17.
 
 ---
 
-### Phase 3 — Vitest, then the rest of 2.0.0
+### Phase 3 — Vitest in, Karma out — 🔄 in progress
 
-- [ ] Bump the core in this workspace to `^0.9.2` and raise the library peer to
-      `>=0.9.2 <1.0.0` (**D3** — currently `>=0.8.0`)
-- [ ] Flip the library `test` target back to `@angular/build:unit-test` with
-      `runner: vitest`. Everything else for this is already in place from the
-      spike: `@angular/build`, `vitest` and `jsdom` installed, and the build
-      target already moved to `@angular/build:ng-packagr`
-- [ ] Confirm all 9 existing tests pass under Vitest — 1 of 3 suites already did
-- [ ] Then §4 below (remove Karma), §5 (real tests), §2 (API rewrite), §3 (demo
-      app), §6 (CI and release), §7 (docs)
+All local, on `feat/2.0.0`. Nothing is pushed or published in this phase.
+
+| # | Task | Status | Notes |
+|---|---|---|---|
+| 3.1 | Bump the workspace's core dependency `^0.8.0` → `^0.9.2` | 🔄 | 0.8.0 is what is installed today |
+| 3.2 | Raise the library peer `>=0.8.0` → `>=0.9.2 <1.0.0` (**D3**) | ⬜ | 0.9.2 is the first core a Node consumer, such as Vitest, can load |
+| 3.3 | Baseline: build-lib, demo build and **Karma** tests all green on 0.9.2 | ⬜ | Changes the core before the runner, so a failure has exactly one cause |
+| 3.4 | Library `test` target → `@angular/build:unit-test`, `runner: vitest` | ⬜ | Tooling already installed by the trial run |
+| 3.5 | Convert Jasmine-only matchers | ⬜ | One found: `toBeTrue()` at `ngx-bloomsight.component.spec.ts:46` |
+| 3.6 | All library tests green under Vitest | ⬜ | 9 tests across 3 spec files |
+| 3.7 | Demo app `build` → `@angular/build:application`, via the official `use-application-builder` migration (**A6**) | ⬜ | Declined six times during the Angular upgrade. Vitest needs it |
+| 3.8 | Demo app `test` target → Vitest, tests green | ⬜ | 3 tests |
+| 3.9 | Remove Karma: `karma`, `karma-*`, `jasmine-core`, `@types/jasmine`, `istanbul-lib-instrument`; both `karma.conf.js`; both `src/test.ts`; Jasmine types in the spec tsconfigs | ⬜ | |
+| 3.10 | Coverage reporting under Vitest | ⬜ | |
+| 3.11 | Sweep: no Karma or Jasmine references outside historical logs | ⬜ | |
+| 3.12 | Close out the docs: §4 here, **A6** and **A7** in MODERNISATION.md | ⬜ | |
+
+After Phase 3: §5 real tests, §2 API rewrite, §3 demo app, §6 CI and release,
+§7 docs.
 
 ## 2. Library — the 2.0.0 API
 
