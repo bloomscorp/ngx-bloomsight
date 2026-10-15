@@ -13,7 +13,7 @@
 
 > **Live tracker.** Updated and committed as each task lands.
 >
-> **Now:** §1 Phase 3, task 3.1. Bumping the core to 0.9.2.
+> **Now:** §1 Phase 3, task 3.4. Moving the library tests to Vitest.
 >
 > **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
 > `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released
@@ -158,10 +158,10 @@ All local, on `feat/2.0.0`. Nothing is pushed or published in this phase.
 
 | # | Task | Status | Notes |
 |---|---|---|---|
-| 3.1 | Bump the workspace's core dependency `^0.8.0` → `^0.9.2` | 🔄 | 0.8.0 is what is installed today |
-| 3.2 | Raise the library peer `>=0.8.0` → `>=0.9.2 <1.0.0` (**D3**) | ⬜ | 0.9.2 is the first core a Node consumer, such as Vitest, can load |
-| 3.3 | Baseline: build-lib, demo build and **Karma** tests all green on 0.9.2 | ⬜ | Changes the core before the runner, so a failure has exactly one cause |
-| 3.4 | Library `test` target → `@angular/build:unit-test`, `runner: vitest` | ⬜ | Tooling already installed by the trial run |
+| 3.1 | Bump the workspace's core dependency `^0.8.0` → `^0.9.2` | ✅ | Installed 0.9.2, which pulls in bmx-pastebox 1.1.0 |
+| 3.2 | Raise the library peer `>=0.8.0` → `>=0.9.2 <1.0.0` (**D3**) | ✅ | 0.9.2 is the first core a Node consumer, such as Vitest, can load |
+| 3.3 | Baseline: build-lib, demo build and **Karma** tests all green on 0.9.2 | ✅ | Green on 0.9.2: build-lib, demo build 289.14 kB, Karma 3/3 and 9/9 |
+| 3.4 | Library `test` target → `@angular/build:unit-test`, `runner: vitest` | 🔄 | Tooling already installed by the trial run |
 | 3.5 | Convert Jasmine-only matchers | ⬜ | One found: `toBeTrue()` at `ngx-bloomsight.component.spec.ts:46` |
 | 3.6 | All library tests green under Vitest | ⬜ | 9 tests across 3 spec files |
 | 3.7 | Demo app `build` → `@angular/build:application`, via the official `use-application-builder` migration (**A6**) | ⬜ | Declined six times during the Angular upgrade. Vitest needs it |
