@@ -1413,3 +1413,20 @@ What carried the whole thing: committing before every `ng update`, reading the
 schematic collections directly instead of trusting the console, probing risky
 migrations with a throwaway tsconfig beforehand, and tracking `minVersion` in the
 built artifact rather than assuming the peer range still held.
+
+---
+
+## After the climb — the deferred migrations, taken
+
+Two items deferred throughout the climb were taken deliberately on
+2026-10-15, during the 2.0.0 work:
+
+| Deferred migration | Outcome |
+|---|---|
+| `use-application-builder` (offered at every step, 17 to 22) | Applied. It was needed because Vitest's builder only drives `application` and `ng-packagr` builds. It also removed `@angular-devkit/build-angular` from the workspace |
+| Karma → Vitest (`migrate-karma-to-vitest`, offered at 22) | Done by configuring `@angular/build:unit-test` directly. The schematic refuses library projects, but the builder handles them |
+
+Zone.js went too: the Vitest builder's setup uses top-level `await`, which
+Angular does not allow alongside Zone.js, so the demo app became zoneless
+(decision D6 in RELEASE-2.0.0.md). The details are in RELEASE-2.0.0.md §1
+Phase 3 and §4.

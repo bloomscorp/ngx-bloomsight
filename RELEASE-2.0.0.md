@@ -13,10 +13,11 @@
 
 > **Live tracker.** Updated and committed as each task lands.
 >
-> **Now:** §1 Phase 3, task 3.12. Closing out the docs.
+> **Now:** §1 is complete. Next up is §5, real tests for the two services, which then lets coverage thresholds be enforced.
 >
 > **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
-> `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released
+> `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released ·
+> **Vitest in, Karma and Zone.js out** (§1 Phase 3, §4)
 >
 > Legend: ✅ done · 🔄 in progress · ⬜ not started · ⛔ blocked
 
@@ -152,7 +153,7 @@ in git while npm served 1.0.17; the committed file now says 1.0.17.
 
 ---
 
-### Phase 3 — Vitest in, Karma out — 🔄 in progress
+### Phase 3 — Vitest in, Karma out — ✅ done 2026-10-15
 
 All local, on `feat/2.0.0`. Nothing is pushed or published in this phase.
 
@@ -169,7 +170,7 @@ All local, on `feat/2.0.0`. Nothing is pushed or published in this phase.
 | 3.9 | Remove Karma: `karma`, `karma-*`, `jasmine-core`, `@types/jasmine`, `istanbul-lib-instrument`; both `karma.conf.js`; both `src/test.ts`; Jasmine types in the spec tsconfigs | ✅ | Removed 9 packages, including zone.js (an optional peer, now unused), both karma.conf.js and both src/test.ts. Everything still green |
 | 3.10 | Coverage reporting under Vitest | ✅ | npm run test:coverage, v8 provider. Library baseline: 52% statements, 33% functions (T1, measured). Thresholds deliberately deferred to §5: set now, they would lock the bar at the known gap |
 | 3.11 | Sweep: no Karma or Jasmine references outside historical logs | ✅ | Clean, and none left in the lockfile. Removed a stale tip in environment.ts pointing at the deleted zone.js. One intentional history comment kept |
-| 3.12 | Close out the docs: §4 here, **A6** and **A7** in MODERNISATION.md | 🔄 |  |
+| 3.12 | Close out the docs: §4 here, **A6** and **A7** in MODERNISATION.md | ✅ | §4 here, A6 and A7 in MODERNISATION.md, and an 'after the climb' section in UPGRADE-LOG.md |
 
 After Phase 3: §5 real tests, §2 API rewrite, §3 demo app, §6 CI and release,
 §7 docs.
@@ -276,71 +277,33 @@ The point of the rewrite: each of these needs a visible, clickable surface.
 
 ---
 
-## 4. Vitest in, Karma out — 🟡 spike done, blocked on one dependency
+## 4. Vitest in, Karma out — ✅ done 2026-10-15
 
-**The spike's question is answered: `@angular/build:unit-test` does drive a
-library project.** The `migrate-karma-to-vitest` schematic's refusal
-("skipped — non-application") is a limitation of the *schematic*, not the
-builder. Wired by hand into `angular.json`, Vitest 4.1.11 ran, discovered all
-three spec files and executed them.
+Done as §1 Phase 3; the task table there has the per-step detail.
 
-- [x] Spike: `@angular/build:unit-test` with `runner: vitest` on the library
-- [x] Install `@angular/build`, `vitest`, `jsdom` (the builder requires a DOM
-      environment and names `jsdom` or `happy-dom`)
-- [x] **Library build target moved to `@angular/build:ng-packagr`.** The
-      unit-test builder warns that `@angular-devkit/build-angular:ng-packagr`
-      "is not supported"; the `@angular/build` equivalent is. Verified the
-      library still builds, and the warning is gone. Kept — it is a clean
-      improvement regardless of the runner
-- [ ] **Blocked until phase 3 of §1.** Then flip the test target
-- [ ] Remove `karma`, `karma-*`, `jasmine-core`, `@types/jasmine`,
-      `istanbul-lib-instrument`; delete both `karma.conf.js` and both
-      `src/test.ts`
-- [ ] Coverage thresholds
-- [ ] Adopt `@angular/build:application` for the demo app (**A6**)
+- Both projects test with `@angular/build:unit-test`, `runner: vitest`, `jsdom`.
+  Library 9/9, demo app 3/3
+- The demo app builds with `@angular/build:application` (**A6**), and
+  `@angular-devkit/build-angular` is gone from the workspace
+- Karma, Jasmine, `istanbul-lib-instrument`, **and Zone.js** are uninstalled, and
+  the lockfile resolves none of them
+- `npm run test:coverage` reports through the v8 provider. **Thresholds wait for
+  §5**: today's library function coverage is 33%, the T1 gap, and enforcing a
+  bar now would set it at the gap
 
-### The blocker — and it is ours
+Things this turned up, for whoever works on §3 and §5:
 
-Two of the three suites fail, and not because of the builder or the library:
-
-```
-Error: Cannot find module '…/node_modules/bmx-pastebox/dist/pastebox'
-       imported from …/node_modules/bmx-pastebox/dist/index.js
-```
-
-`bmx-pastebox@1.0.14` is a **Bloomscorp package** (authored
-`debabrata@bloomscorp.com`) and a transitive dependency of
-`@bloomscorp/bloomsight.js`. It is malformed:
-
-- `main` is `dist/index.js`, whose entire content is
-  `export * from './pastebox';`
-- that is **ESM syntax** in a package with **no `"type": "module"`**, no
-  `exports` map and no `module` field
-- and the specifier is **extensionless**, which is invalid ESM
-
-Webpack tolerated both, which is why Karma never complained for years. Vite and
-Node do not. Any consumer on native-ESM tooling hits this today — it is not a
-test-only problem, it was merely invisible until something stopped being lenient.
-
-**Tried and rejected:** `test.server.deps.inline` in a `runnerConfig` vitest
-config. Resolution fails before Vite can transform the package, so the
-workaround does not help. Removed rather than left in place looking like it does.
-
-**The right fix is to delete the dependency.** `bloomsight.js` imports exactly
-**one** function from it — `isEmptyString`, in `src/transmission/transmission.ts`
-— and it is a two-line predicate:
-
-```js
-export function isEmptyString(str) {
-	return valueExists(str) && (str.trim() === '' || str.trim().length === 0);
-}
-```
-
-Inlining that removes a runtime dependency from a browser SDK and fixes the
-hazard for **every** consumer rather than papering over it for one test run.
-Needs a core patch release after 0.9.0.
-
-Until then the library stays on Karma, so the branch is green at every commit.
+- **The demo app is zoneless** (D6). Vitest's generated setup uses top-level
+  `await`, which Angular forbids in apps that load Zone.js, so going zoneless was
+  required, not optional. It also cut the bundle from 291.56 kB to 253.94 kB.
+  Verified in headless Chrome, not only in TestBed
+- **Vitest compiles templates ahead of time**, so an NgModule-declared component
+  cannot be tested without its module's scope. The demo's `AppComponent` became
+  standalone for that reason. The §3 rewrite is standalone throughout anyway
+- **Never assert on `Function.prototype.name`.** esbuild renames decorated
+  classes (`_BloomsightEventService`), so compare classes by identity
+- **Jasmine matchers fail at compile time**, not runtime — `toBeTrue()` is not on
+  Vitest's `Assertion` type
 
 ## 5. Tests — close T1 properly
 
@@ -421,14 +384,12 @@ Mirror what `bloomsight.js` ended up with; it has already been through this.
 
 ## 9. Suggested order
 
-1. ~~D1–D7 answered~~ ✅ settled 2026-10-12 (§0)
-2. ~~Core P6 fix~~ ✅ released as `bloomsight.js@0.9.1` — 12 files, 0 orphan
-   declarations, enum present at runtime, verified against the published tarball
-3. ~~Vitest spike~~ ✅ `@angular/build:unit-test` drives a library project
-4. **§1 phase 1** — release `bmx-pastebox` 1.1.0 ← *needs the npm trusted
-   publisher from you*
-5. **§1 phase 2** — bump and release `bloomsight.js` 0.9.2, with the
-   consumer-load gate added
-6. **§1 phase 3** — bump the peer here, flip to Vitest, finish §4
-7. §5 real tests → §2 API rewrite → §3 demo app → §6 CI and release → §7 docs
+1. ~~D1–D7 answered~~ ✅ (§0)
+2. ~~Core P6 fix~~ ✅ `bloomsight.js@0.9.1`
+3. ~~Vitest trial run~~ ✅
+4. ~~§1 phase 1~~ ✅ `bmx-pastebox@1.1.0`
+5. ~~§1 phase 2~~ ✅ `bloomsight.js@0.9.2`, with the consumer-load gate
+6. ~~§1 phase 3 / §4~~ ✅ Vitest in, Karma and Zone.js out
+7. **§5 real tests** ← next. Then §2 API rewrite → §3 demo app → §6 CI and
+   release → §7 docs
 8. Verification gate (§8), then publish 2.0.0
