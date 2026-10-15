@@ -261,15 +261,14 @@ revisit.
 
 ## 4. Testing
 
-- **T1** 🟡 **Partly addressed — 2 specs to 8 tests.** The component spec was
-  rewritten at the 19 standalone step (4 assertions, both consumption paths,
-  plus a guard against reverting `standalone`), and `ngx-bloomsight.module.spec.ts`
-  was added with the P1 fix (3 tests: the config type is reachable from the
-  public API, the config token is provided, and both services are provided by
-  `forRoot` — the last one pins B6 down as an assertion rather than a note).
-  The substance of T1 still stands: nothing exercises the **behaviour** of
-  `BloomsightEventService` or `BloomsightMailService`. Doing so needs `init()`
-  mocked, since both call it from their constructors.
+- **T1** ✅ **Closed 2026-10-15.** Both services are under test, two ways. 31
+  library unit tests mock the core with `vi.mock` and check every call the
+  services make. 20 demo app integration tests run the **real** core with only
+  `fetch` stubbed and check the actual requests. Every test was
+  mutation-checked: two first drafts passed with the bug they targeted
+  reintroduced, because Angular's router ignores same-URL navigation, and were
+  rewritten. Library coverage went from 33% to 100% of functions, enforced at
+  100% per file. Six findings (F1–F6) are recorded in RELEASE-2.0.0.md §2.0
 - **T2** The demo app imports the library by **source path**
   (`projects/bloomscorp/ngx-bloomsight/src/public-api`), not by package name, so
   the built and published artifact is never smoke-tested. The `tsconfig` path

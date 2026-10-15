@@ -13,11 +13,12 @@
 
 > **Live tracker.** Updated and committed as each task lands.
 >
-> **Now:** §5, task 5.7. Closing T1 and recording the findings.
+> **Now:** §5 is complete. Next: code review of the branch, then push. After that, §2, the API rewrite, with F1–F6 as inputs.
 >
 > **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
 > `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released ·
-> **Vitest in, Karma and Zone.js out** (§1 Phase 3, §4)
+> **Vitest in, Karma and Zone.js out** (§1 Phase 3, §4) ·
+> **both services under test, library at 100% coverage** (§5)
 >
 > Legend: ✅ done · 🔄 in progress · ⬜ not started · ⛔ blocked
 
@@ -177,6 +178,20 @@ After Phase 3: §5 real tests, §2 API rewrite, §3 demo app, §6 CI and release
 
 ## 2. Library — the 2.0.0 API
 
+### 2.0 Findings from §5 that the rewrite must address
+
+Writing the tests surfaced these. Each is pinned by a test where possible, so
+fixing one is a deliberate change that will flip that test.
+
+| # | Finding | Where | Pinned by |
+|---|---|---|---|
+| **F1** | **`label` is a dead parameter.** Accepted by `resolveSimpleEvent` / `resolveDataEvent` at every layer — this wrapper, the core's public API, and both the B1 and B2 implementations — and put in **no** payload by either backend. Callers reasonably believe it is recorded. Decide: drop it from the 2.0.0 API, or have the core send it | wrapper, core B1 + B2 | `b2-events` "does not send the label" |
+| **F2** | **Under `logOnly`, `sendMail` calls neither callback.** The core's `transferEmail` returns before sending, so a UI waiting on success or failure waits forever. The Observable-returning 2.0.0 `sendMail` should complete under `logOnly` | core `email-transmission.ts` | `b2-log-only` "never calls either mail callback" |
+| **F3** | **The core calls `window.matchMedia` without a guard**, in platform detection, while the checks beside it use `?.`. Where `matchMedia` is missing, `init()` throws, and the throw escapes this library's service constructor and breaks injection | core `platform.ts:97` | the jsdom stub in `src/test-setup.ts` |
+| **F4** | **A mail rejection with no `message` reports `undefined` instead of the intended fallback.** The core uses `isEmptyString(response.message)`, and `isEmptyString(undefined)` is `false` — the bmx-pastebox quirk documented and pinned there. This wrapper's `onError` takes no argument, so only direct core users see it | core `transmission.ts` + bmx-pastebox | — (masked by the wrapper) |
+| **F5** | **`pageViewObserver()` is public and subscribes again on every call.** The constructor already calls it, so a consumer calling it too gets every page view twice. Belongs with **B4** (the subscription is never released) | wrapper event service | — |
+| **F6** | **The mail service's `as unknown as` cast is now unnecessary, and its comment is out of date.** Core 0.9.2's `sendEmail` accepts plain `'GMAIL'` / `'CUSTOM_SMTP'` strings (the P6 fix), so the cast and the "enums are nominal" explanation can go — verify with the compiler when the file is rewritten | wrapper mail service | — |
+
 ### 2.1 New surface
 
 - [ ] `BLOOMSIGHT_CONFIG` as a real `InjectionToken<BloomsightConfig>` — **P3**,
@@ -305,7 +320,7 @@ Things this turned up, for whoever works on §3 and §5:
 - **Jasmine matchers fail at compile time**, not runtime — `toBeTrue()` is not on
   Vitest's `Assertion` type
 
-## 5. Tests — close T1 — 🔄 in progress
+## 5. Tests — close T1 — ✅ done 2026-10-15
 
 Until now no test exercised the **behaviour** of the two services that do the
 real work, which is why library function coverage sits at 33%. Two kinds of
@@ -327,7 +342,7 @@ test, because each proves something the other cannot:
 | 5.4 | Init runs once with both services injected (**B1**) | ✅ | Both injection orders. Removing the init-once guard fails both |
 | 5.5 | Demo app integration tests, real core, `fetch` stubbed | ✅ | 20 tests across 4 files, real core, fetch stubbed. Needed a jsdom matchMedia stub. Every 'nothing was sent' test proves the core was alive. All wrapper mutations caught at request level. Found: label is never sent by any backend, and logOnly mail calls neither callback |
 | 5.6 | Enforce coverage thresholds from the new baseline | ✅ | Library 52/67/33/33% → 100/100/100/100%. Enforced at 100% per file; one untested method fails with the file named. Applies under npm run test:coverage, which §6's CI must run |
-| 5.7 | Close T1 in MODERNISATION.md | 🔄 |  |
+| 5.7 | Close T1 in MODERNISATION.md | ✅ | T1 closed. Six findings, F1–F6, recorded in §2.0 as inputs to the API rewrite |
 
 Then: code review of the branch, and push.
 
@@ -391,6 +406,7 @@ Mirror what `bloomsight.js` ended up with; it has already been through this.
 4. ~~§1 phase 1~~ ✅ `bmx-pastebox@1.1.0`
 5. ~~§1 phase 2~~ ✅ `bloomsight.js@0.9.2`, with the consumer-load gate
 6. ~~§1 phase 3 / §4~~ ✅ Vitest in, Karma and Zone.js out
-7. **§5 real tests** ← next. Then §2 API rewrite → §3 demo app → §6 CI and
-   release → §7 docs
-8. Verification gate (§8), then publish 2.0.0
+7. ~~§5 real tests~~ ✅ 31 library + 20 integration tests, 100% library coverage
+8. **Code review, then push** ← next. Then §2 API rewrite (F1–F6) → §3 demo
+   app → §6 CI and release → §7 docs
+9. Verification gate (§8), then publish 2.0.0
