@@ -13,7 +13,7 @@
 
 > **Live tracker.** Updated and committed as each task lands.
 >
-> **Now:** §5a, review fixes. RV1 and RV2 are done; RV3 next.
+> **Now:** §5a, review fixes. RV1–RV3 are done; RV4 is next (init failures must not break the host app).
 >
 > **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
 > `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released ·
@@ -356,8 +356,8 @@ against real old compilers before anything else.
 |---|---|---|---|
 | RV1 | **Critical.** The published component emitted `ChangeDetectionStrategy.Eager`. Linkers before Angular 22 have no `Eager` and fail with *"Unsupported change detection strategy"*. **Confirmed with Angular 19.2.25's real linker.** The 22 step's claim that this was safe was wrong: `minVersion` does not cover enum members | ✅ | `changeDetection` removed from the published component. New `npm run verify:compat` packs the library and, for **every** Angular major in the peer range, links it with that major's real linker and type-checks every public symbol with `skipLibCheck` off. All of 19.2.25, 20.3.34, 21.2.25 and 22.2.3 pass. With `Eager` put back it fails on 19 with the linker's reason |
 | RV2 | The peer range still says `>=14.2.0`, which is unprovable: the `.d.ts` uses a 9-argument `ɵɵComponentDeclaration`, and Angular 14's takes 8 | ✅ | Peer range now `>=19.0.0 <23.0.0` (**D2**), and §0.1's obligation 2 is met: compatibility is proven per major by `verify:compat`, not declared |
-| RV3 | The mail service's `as unknown as` cast switches off the compiler's check on the engine, and its comments have been false since core 0.9.2 (**F6**) | ⬜ | Alias `BloomsightEmailEngine` to the core's `EmailEngineType`, as `BloomsightConfig` aliases `IConfig`; pass the engine with no cast |
-| RV4 | If the core's `init()` throws, the error escapes the service constructor and breaks injection, and `initOnce` has already set its flag, so init never retries (the wrapper's half of **F3**) | ⬜ | Catch, report through `onError`, and set the flag only after success. The core-side `matchMedia` guard remains a core item |
+| RV3 | The mail service's `as unknown as` cast switches off the compiler's check on the engine, and its comments have been false since core 0.9.2 (**F6**) | ✅ | `BloomsightEmailEngine` now aliases the core's `EmailEngineType`; no cast. Proven: the compiler rejects `'SMTP'` (TS2322) and accepts `'CUSTOM_SMTP'`. Closes **F6** |
+| RV4 | If the core's `init()` throws, the error escapes the service constructor and breaks injection, and `initOnce` has already set its flag, so init never retries (the wrapper's half of **F3**) | 🔄 | Catch, report through `onError`, and set the flag only after success. The core-side `matchMedia` guard remains a core item |
 | RV5 | The `logOnly` "sends no mail" test cannot fail: it never proves `sendMail` reached the core | ⬜ | Assert the core's development-mode mail log |
 | RV6 | "honours apiBase" passes vacuously when nothing is sent | ⬜ | Require the ingest request |
 | RV7 | `settle()` waits a fixed number of ticks, so tests could flake under load | ⬜ | `vi.waitFor` on the observed condition; `settle()` kept only after a positive signal |
