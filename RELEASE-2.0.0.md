@@ -12,14 +12,15 @@
 
 > **Live tracker.** Updated and committed as each task lands.
 >
-> **Now:** 🔄 §3, the demo app rebuild. Design settled (§3.3); working through the §3.4 task table. §2 is pushed.
+> **Now:** §3, the demo app rebuild, is ✅ done and committed locally, not yet pushed. Next: §6, CI and the release pipeline.
 >
 > **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
 > `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released ·
 > **Vitest in, Karma and Zone.js out** (§1 Phase 3, §4) ·
 > **both services under test, library at 100% coverage** (§5) ·
 > **code review: 9 findings fixed, Angular 19–22 proven** (§5a) ·
-> **the 2.0.0 API: `provideBloomsight()` + one service, 1.x surface deleted** (§2)
+> **the 2.0.0 API: `provideBloomsight()` + one service, 1.x surface deleted** (§2) ·
+> **demo app rebuilt: every feature on screen, safe by default, built package** (§3)
 >
 > Legend: ✅ done · 🔄 in progress · ⬜ not started · ⛔ blocked
 
@@ -172,6 +173,20 @@ All local, on `feat/2.0.0`. Nothing is pushed or published in this phase.
 | 3.9 | Remove Karma: `karma`, `karma-*`, `jasmine-core`, `@types/jasmine`, `istanbul-lib-instrument`; both `karma.conf.js`; both `src/test.ts`; Jasmine types in the spec tsconfigs | ✅ | Removed 9 packages, including zone.js (an optional peer, now unused), both karma.conf.js and both src/test.ts. Everything still green |
 | 3.10 | Coverage reporting under Vitest | ✅ | npm run test:coverage, v8 provider. Library baseline: 52% statements, 33% functions (T1, measured). Thresholds deliberately deferred to §5: set now, they would lock the bar at the known gap |
 | 3.11 | Sweep: no Karma or Jasmine references outside historical logs | ✅ | Clean, and none left in the lockfile. Removed a stale tip in environment.ts pointing at the deleted zone.js. One intentional history comment kept |
+
+**Found while building it** — none is a library bug, all recorded:
+
+- **The core's page-view timer outlives the app.** It waits two seconds before
+  sending, and sends with whatever configuration is current *then*. A demo test
+  that left a page view pending under `logOnly` had it sent by the next test's
+  live configuration. Tests that depend on this get their own file. In a real
+  app this needs a re-bootstrap within two seconds, so it is noted, not fixed
+- **Headless Chrome is a bot to the core**, so it stops tracking — correctly.
+  The activity panel made it visible ("tracking simple event is disabled!"). The
+  browser check presents a normal Chrome user agent
+- **The core reports `PROPERTY_PAUSED` for a property with no `status`**,
+  saying *website 'undefined' is paused*. Only a malformed server reply
+  triggers it; worth tightening to `status === 'paused'` in a later core release
 | 3.12 | Close out the docs: §4 here, **A6** and **A7** in MODERNISATION.md | ✅ | §4 here, A6 and A7 in MODERNISATION.md, and an 'after the climb' section in UPGRADE-LOG.md |
 
 After Phase 3: §5 real tests, §2 API rewrite, §3 demo app, §6 CI and release,
@@ -270,7 +285,7 @@ stability tag read from `@angular/core@19.0.0`'s own declarations:
 
 ---
 
-## 3. Demo app — complete rewrite — 🔄 in progress
+## 3. Demo app — complete rewrite — ✅ done 2026-10-15
 
 Deleted and rebuilt. It currently proves nothing: it imports the module without
 `forRoot()`, so it configures nothing, and it imports the library by source path
@@ -278,15 +293,15 @@ so it never exercises the published artifact.
 
 ### 3.1 Structure
 
-- [ ] `bootstrapApplication`, no `AppModule`, no `app-routing.module.ts`
-- [ ] Standalone components throughout, `inject()`, signals for state
-- [ ] `@if` / `@for` / `@switch` only — no `*ngIf` / `*ngFor` / `*ngSwitch`
-- [ ] Delete the stock Angular welcome page — **this also removes the CSS budget
+- [x] `bootstrapApplication`, no `AppModule`, no `app-routing.module.ts`
+- [x] Standalone components throughout, `inject()`, signals for state
+- [x] `@if` / `@for` / `@switch` only — no `*ngIf` / `*ngFor` / `*ngSwitch`
+- [x] Delete the stock Angular welcome page — **this also removes the CSS budget
       warning at its source** rather than raising the budget
-- [ ] Drop `src/polyfills.ts`, `src/test.ts` and `src/environments/*` if Angular
+- [x] Drop `src/polyfills.ts`, `src/test.ts` and `src/environments/*` if Angular
       22 no longer needs them
-- [ ] Zoneless per **D6**
-- [ ] **Consume the built package by name** (`@bloomscorp/ngx-bloomsight`), not
+- [x] Zoneless per **D6**
+- [x] **Consume the built package by name** (`@bloomscorp/ngx-bloomsight`), not
       by source path — **T2**. Requires `build-lib` to run before `build`;
       wire that into the scripts so a clean checkout works
 
@@ -343,7 +358,7 @@ mail, which covers **lazy route (B7)** and **mail without events (B6)**.
 
 **Angular 22 in the demo, since the API cap applies to the library only:**
 standalone components with no NgModule, `bootstrapApplication`, zoneless,
-signals, `computed` and `linkedSignal`, `toSignal`, `@if` / `@for` / `@let`,
+signals, `computed`, `input()`, `toSignal`, `@if` / `@for` / `@switch` / `@let`,
 route `title`, `provideBrowserGlobalErrorListeners`, and the Angular 20 file
 naming (`app.ts` rather than `app.component.ts`).
 
@@ -356,17 +371,17 @@ through Angular's linker, exactly as a consumer does. `build`, `start` and
 
 | # | Task | Status | Notes |
 |---|---|---|---|
-| 3.1 | Delete the old demo: `AppModule`, routing module, stock welcome page, `environments/`, `fileReplacements` | ⬜ | |
-| 3.2 | Remove unused dependencies: `@angular/platform-browser-dynamic`, `@angular/animations`, `@angular/forms` | ⬜ | |
-| 3.3 | Settings store: defaults (D5), `localStorage` with a safe fallback, reload to apply | ⬜ | |
-| 3.4 | Activity capture: `fetch` and `console`, installed before bootstrap | ⬜ | |
-| 3.5 | Shell: header with live/logOnly status, navigation, activity and `errors$` panels | ⬜ | |
-| 3.6 | Pages: overview, events, page views, mail, settings, all lazy | ⬜ | |
-| 3.7 | T2: import the package by name; `build-lib` before `build`, `start` and `test` | ⬜ | |
-| 3.8 | Facade check: `npm run verify:facade` fails if any demo file imports `@bloomscorp/bloomsight.js` | ⬜ | |
-| 3.9 | Demo tests: settings, activity capture and each page, against the built library and the real core | ⬜ | |
-| 3.10 | Verified in a real browser: boots, every page works, and `logOnly` sends nothing | ⬜ | |
-| 3.11 | Gate: CSS budget warning gone, build, tests, `verify:compat` | ⬜ | |
+| 3.1 | Delete the old demo: `AppModule`, routing module, stock welcome page, `environments/`, `fileReplacements` | ✅ | 8 files, and `fileReplacements` in `angular.json` |
+| 3.2 | Remove unused dependencies: `@angular/platform-browser-dynamic`, `@angular/animations`, `@angular/forms` | ✅ | All three unused once `main.ts` moved to `bootstrapApplication` |
+| 3.3 | Settings store: defaults (D5), `localStorage` with a safe fallback, reload to apply | ✅ | A stored value of the wrong type falls back field by field; blocked storage falls back entirely |
+| 3.4 | Activity capture: `fetch` and `console`, installed before bootstrap | ✅ | Recorded a microtask later: a console call during rendering must not write a signal |
+| 3.5 | Shell: header with live/logOnly status, navigation, activity and `errors$` panels | ✅ | | |
+| 3.6 | Pages: overview, events, page views, mail, settings, all lazy | ✅ | Each page is its own lazy chunk (2–5 kB) |
+| 3.7 | T2: import the package by name; `build-lib` before `build`, `start` and `test` | ✅ | Proven: library source broken with `dist/` stale, 80/80 demo tests pass; rebuilt, the two that cover it fail |
+| 3.8 | Facade check: `npm run verify:facade` fails if any demo file imports `@bloomscorp/bloomsight.js` | ✅ | Catches static, dynamic, subpath and type-only imports; ignores the rule being mentioned in a comment |
+| 3.9 | Demo tests: settings, activity capture and each page, against the built library and the real core | ✅ | 80 demo tests (was 25), 99.4% of statements. 12 bugs put back in the demo one at a time: every one caught |
+| 3.10 | Verified in a real browser: boots, every page works, and `logOnly` sends nothing | ✅ | Production build in headless Chrome, every non-localhost request intercepted: 13 checks pass, including **zero POSTs under the defaults** and no horizontal scroll at 390 px |
+| 3.11 | Gate: CSS budget warning gone, build, tests, `verify:compat` | ✅ | CSS budget warning gone with the welcome page; build, `test:coverage`, `verify:facade`, `verify:compat` on 19–22 all green |
 
 ---
 
@@ -463,6 +478,7 @@ Mirror what `bloomsight.js` ended up with; it has already been through this.
 - [ ] `.node-version` (v24.18.0) respected in CI
 - [ ] **Upgrade the release tooling** (`release-it` 17, `@release-it/conventional-changelog` 8). As of 2026-10-15 `npm audit` on `feat/2.0.0` reports 19 issues (2 critical, 11 high), **all in dev-only tooling** and nearly all under `release-it`. The runtime tree that consumers install reports **0**. For comparison, GitHub flags 127 on `main`, which still has the Angular 14-era tree
 - [ ] CI must run `npm run test:coverage` (thresholds are not enforced by plain `npm test`) and `npm run verify:compat` (the proof behind the peer range)
+- [ ] CI must run `npm run verify:facade` (the demo app imports nothing from the core), and `npm run build`, which now builds the library first (T2)
 
 ---
 
@@ -508,5 +524,6 @@ Mirror what `bloomsight.js` ended up with; it has already been through this.
 7. ~~§5 real tests~~ ✅ 31 library + 20 integration tests, 100% library coverage
 8. ~~Code review, then push~~ ✅ (§5a)
 9. ~~§2 API rewrite~~ ✅
-10. **§3 demo app** ← now. Then §6 CI and release → §7 docs
-11. Verification gate (§8), then publish 2.0.0
+10. ~~§3 demo app~~ ✅
+11. **§6 CI and release** ← next. Then §7 docs
+12. Verification gate (§8), then publish 2.0.0

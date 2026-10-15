@@ -289,7 +289,11 @@ revisit.
   reintroduced, because Angular's router ignores same-URL navigation, and were
   rewritten. Library coverage went from 33% to 100% of functions, enforced at
   100% per file. Six findings (F1–F6) are recorded in RELEASE-2.0.0.md §2.0
-- **T2** The demo app imports the library by **source path**
+- **T2** ✅ **Closed 2026-10-15.** The demo app and all its tests import
+  `@bloomscorp/ngx-bloomsight`, which `tsconfig` maps to `dist/`, and `build`,
+  `start` and `test` run `build-lib` first. Proven both ways: with the library
+  source broken and `dist/` left stale, all 80 demo tests pass; rebuilt from the
+  broken source, the two that cover it fail. *Was:* The demo app imports the library by **source path**
   (`projects/bloomscorp/ngx-bloomsight/src/public-api`), not by package name, so
   the built and published artifact is never smoke-tested. The `tsconfig` path
   mapping to `dist/` exists and is bypassed.
