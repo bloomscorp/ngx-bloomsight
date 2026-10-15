@@ -13,7 +13,7 @@
 
 > **Live tracker.** Updated and committed as each task lands.
 >
-> **Now:** §5, task 5.3. BloomsightMailService unit tests.
+> **Now:** §5, task 5.5. Demo app integration tests against the real core.
 >
 > **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
 > `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released ·
@@ -323,9 +323,9 @@ test, because each proves something the other cannot:
 |---|---|---|---|
 | 5.1 | Turn on test isolation (`isolate: true`) for both projects | ✅ | Both projects. Existing 12 tests still green |
 | 5.2 | `BloomsightEventService` unit tests | ✅ | 12 tests, mutation-tested. Two first drafts passed even with B3 reintroduced or the dedupe removed: Angular ignores navigation to the current URL, so they tested the router, not us. Rewritten so both mutations fail |
-| 5.3 | `BloomsightMailService` unit tests | 🔄 | Positional reordering into the core's signature; default engine `GMAIL`; `CUSTOM_SMTP` arrives as the plain string; callbacks reach the caller |
-| 5.4 | Init runs once with both services injected (**B1**) | ⬜ | |
-| 5.5 | Demo app integration tests, real core, `fetch` stubbed | ⬜ | B2 events reach the ingest endpoint with the right payload; page views are a no-op under B2; `logOnly` and the kill switches suppress sending; server errors surface through `onError`; GMAIL and SMTP mail hit their own endpoints |
+| 5.3 | `BloomsightMailService` unit tests | ✅ | 8 tests. Mutation-tested: swapped arguments, a changed default engine and swapped callbacks each fail their own test |
+| 5.4 | Init runs once with both services injected (**B1**) | ✅ | Both injection orders. Removing the init-once guard fails both |
+| 5.5 | Demo app integration tests, real core, `fetch` stubbed | 🔄 | B2 events reach the ingest endpoint with the right payload; page views are a no-op under B2; `logOnly` and the kill switches suppress sending; server errors surface through `onError`; GMAIL and SMTP mail hit their own endpoints |
 | 5.6 | Enforce coverage thresholds from the new baseline | ⬜ | Deferred from 3.10 until the services were under test |
 | 5.7 | Close T1 in MODERNISATION.md | ⬜ | |
 
