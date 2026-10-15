@@ -83,7 +83,7 @@ export class SettingsPage {
 	protected readonly flags: Array<{key: Flag; text: string}> = [
 		{key: 'logOnly', text: 'log what would be sent, send nothing'},
 		{key: 'isDevelopmentMode', text: 'log everything, skip the property check'},
-		{key: 'debug', text: 'full logging, without development mode'},
+		{key: 'debug', text: 'full blooms.ai logging, without development mode'},
 		{key: 'stopAll', text: 'record nothing'},
 		{key: 'stopSimpleEvent', text: 'no simple events'},
 		{key: 'stopDataEvent', text: 'no data events'},

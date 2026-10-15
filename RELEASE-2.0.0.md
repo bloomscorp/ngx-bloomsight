@@ -12,7 +12,7 @@
 
 > **Live tracker.** Updated and committed as each task lands.
 >
-> **Now:** 🔄 §7, docs and the migration guide (§7 task table). §6 is done; the npm trusted publisher is pending validation by the first publish, which must happen before **2026-10-17 17:17 UTC** or be re-created.
+> **Now:** §7 is ✅ done (7.5 waits for the release). Next: §8, the final verification gate, then the merge to `main` and the release. The npm trusted publisher is pending validation by the first publish, which must happen before **2026-10-17 17:17 UTC** or be re-created.
 >
 > **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
 > `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released ·
@@ -500,7 +500,7 @@ the GitHub release.
 | 6.9 | Push; the first CI run on `feat/2.0.0` goes green | ✅ | **Passed first time**, run 38769659037 on `d64641a` — after the same steps had passed in a fresh clone with `npm ci` and `CI=true` |
 | 6.10 | **You:** npm trusted publisher for `@bloomscorp/ngx-bloomsight` → `bloomscorp/ngx-bloomsight`, `release.yml` | ✅ | Created 2026-10-15, **pending validation** until the first OIDC publish — expected, as with `bmx-pastebox`. npm drops it if unused by **2026-10-17 17:17 UTC**; if the release is later, re-create it with the same values first |
 
-## 7. Docs and consumer migration — 🔄 in progress
+## 7. Docs and consumer migration — ✅ done 2026-10-15 (7.5 after release)
 
 Two audiences, two documents, plus the repository page:
 
@@ -512,10 +512,10 @@ Two audiences, two documents, plus the repository page:
 
 | # | Task | Status | Notes |
 |---|---|---|---|
-| 7.1 | Library README for the 2.0.0 API — setup (standalone **and** NgModule apps), every config field, events, page views, mail, `errors$`, blooms.ai, SSR, the facade rule | ⬜ | The 1.x README documented options that do not exist (`observePageViaWebAPI`) and a method name that never did (`sendEmail`) |
-| 7.2 | MIGRATION.md 1.x → 2.0.0: requirements (Angular **19**–22, the core as a peer at `>=0.9.2`), `forRoot()` → `provideBloomsight()`, two services → one with a call-by-call table, `sendMail` must now be **subscribed**, page-view counting changes, types | ⬜ | |
-| 7.3 | Root README for contributors, replacing the copy of the package README | ⬜ | |
-| 7.4 | MODERNISATION.md: every item closed with an outcome, or deferred with a reason | ⬜ | |
+| 7.1 | Library README for the 2.0.0 API — setup (standalone **and** NgModule apps), every config field, events, page views, mail, `errors$`, blooms.ai, SSR, the facade rule | ✅ | Includes a jsdom note for app tests: the SDK reads `matchMedia` at startup (F3), so without a stub it reports `INIT_FAILED` and stays off |
+| 7.2 | MIGRATION.md 1.x → 2.0.0: requirements (Angular **19**–22, the core as a peer at `>=0.9.2`), `forRoot()` → `provideBloomsight()`, two services → one with a call-by-call table, `sendMail` must now be **subscribed**, page-view counting changes, types | ✅ | Every behaviour change listed traces to a fixed finding (B7, B8, F2, F5, RV4) |
+| 7.3 | Root README for contributors, replacing the copy of the package README | ✅ | |
+| 7.4 | MODERNISATION.md: every item closed with an outcome, or deferred with a reason | ✅ | Nothing left open: the only unticked rows are §1.1's explanatory table, already marked resolved |
 | 7.5 | **After 2.0.0 is on npm:** the Angular notes in `bloomsight.js` MIGRATION.md and blooms-ai `documentation/bloomsight/migration-plan.md` — both say the wrapper needs no release, which stays true for 1.6.0 until 2.0.0 exists | ⬜ | Deliberately post-release, so neither names an unpublished version |
 
 ---
@@ -551,5 +551,6 @@ Two audiences, two documents, plus the repository page:
 9. ~~§2 API rewrite~~ ✅
 10. ~~§3 demo app~~ ✅
 11. ~~§6 CI and release~~ ✅
-12. **§7 docs** ← now
-13. Verification gate (§8), merge to `main`, then publish 2.0.0
+12. ~~§7 docs~~ ✅
+13. **§8 verification gate** ← next
+14. Merge to `main`, then publish 2.0.0
