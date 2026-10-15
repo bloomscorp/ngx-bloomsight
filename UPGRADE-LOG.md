@@ -1279,6 +1279,23 @@ path configuration again.
 
 ### `ChangeDetectionStrategy.Eager` — the prediction that was wrong
 
+> **⚠️ Correction, 2026-10-15 — the conclusion below is wrong.** Code review
+> found, and Angular 19.2.25's real linker confirmed, that the published bundle
+> refers to `ChangeDetectionStrategy.Eager` **by name**. Linkers before Angular
+> 22 have no `Eager` and fail with *"Unsupported change detection strategy"*, so
+> every Angular 19–21 app would have failed to build against this package.
+> `minVersion` did not catch it, because it records the declaration format, not
+> the enum members the declarations use. **`minVersion` is not a compatibility
+> floor.** It was treated as one for this whole log, and it was not.
+>
+> Fixed by removing `changeDetection` from the published component, and guarded
+> by `npm run verify:compat`, which links and type-checks the packed library
+> with the real compiler of every Angular major in the peer range. That is the
+> evidence the peer range now rests on. See RELEASE-2.0.0.md §5a, RV1.
+>
+> The original analysis is kept below unedited, since it shows exactly how the
+> reasoning went wrong.
+
 `change-detection-eager` added `changeDetection: ChangeDetectionStrategy.Eager`
 to both components and the spec's host component. The concern raised beforehand:
 `Eager` is new in 22, so it would land in the published partial declarations and

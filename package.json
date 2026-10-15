@@ -25,7 +25,8 @@
     "release": "release-it",
     "sync-version": "node scripts/sync-library-version.js",
     "check-version": "node scripts/sync-library-version.js --check",
-    "test:coverage": "ng test --watch=false --coverage"
+    "test:coverage": "ng test --watch=false --coverage",
+    "verify:compat": "node scripts/verify-angular-compat.mjs"
   },
   "private": true,
   "dependencies": {
