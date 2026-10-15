@@ -13,12 +13,13 @@
 
 > **Live tracker.** Updated and committed as each task lands.
 >
-> **Now:** §5a, review fixes. RV1–RV4 are done; RV5–RV9 next (test quality and config).
+> **Now:** Review fixes are done (9 fixed, 1 deferred with a reason). Next: push `feat/2.0.0`, then §2, the API rewrite, with F1–F5 as inputs.
 >
 > **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
 > `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released ·
 > **Vitest in, Karma and Zone.js out** (§1 Phase 3, §4) ·
-> **both services under test, library at 100% coverage** (§5)
+> **both services under test, library at 100% coverage** (§5) ·
+> **code review: 9 findings fixed, Angular 19–22 proven** (§5a)
 >
 > Legend: ✅ done · 🔄 in progress · ⬜ not started · ⛔ blocked
 
@@ -346,7 +347,7 @@ test, because each proves something the other cannot:
 
 Then: code review of the branch, and push.
 
-## 5a. Code review of the branch — 🔄 fixing findings
+## 5a. Code review of the branch — ✅ done 2026-10-15
 
 A high-effort review of `main...feat/2.0.0` (33 commits) returned ten findings.
 The first overturned a conclusion from the Angular 22 step, so it was verified
@@ -358,11 +359,11 @@ against real old compilers before anything else.
 | RV2 | The peer range still says `>=14.2.0`, which is unprovable: the `.d.ts` uses a 9-argument `ɵɵComponentDeclaration`, and Angular 14's takes 8 | ✅ | Peer range now `>=19.0.0 <23.0.0` (**D2**), and §0.1's obligation 2 is met: compatibility is proven per major by `verify:compat`, not declared |
 | RV3 | The mail service's `as unknown as` cast switches off the compiler's check on the engine, and its comments have been false since core 0.9.2 (**F6**) | ✅ | `BloomsightEmailEngine` now aliases the core's `EmailEngineType`; no cast. Proven: the compiler rejects `'SMTP'` (TS2322) and accepts `'CUSTOM_SMTP'`. Closes **F6** |
 | RV4 | If the core's `init()` throws, the error escapes the service constructor and breaks injection, and `initOnce` has already set its flag, so init never retries (the wrapper's half of **F3**) | ✅ | `initOnce` catches, reports `INIT_FAILED` through `onError` and the console, survives a throwing handler, and sets its flag only on success, so it retries. 7 new tests. Mutation-tested: removing the catch fails 6, setting the flag early fails the retry test. The coverage threshold caught two untested branches in this fix before it was committed |
-| RV5 | The `logOnly` "sends no mail" test cannot fail: it never proves `sendMail` reached the core | ⬜ | Assert the core's development-mode mail log |
-| RV6 | "honours apiBase" passes vacuously when nothing is sent | ⬜ | Require the ingest request |
-| RV7 | `settle()` waits a fixed number of ticks, so tests could flake under load | ⬜ | `vi.waitFor` on the observed condition; `settle()` kept only after a positive signal |
-| RV8 | A `console.log` spy is not restored if an assertion fails | ⬜ | `afterEach(vi.restoreAllMocks)` |
-| RV9 | `tsconfig.lib.json` still excludes the deleted `src/test.ts` | ⬜ | Remove |
+| RV5 | The `logOnly` "sends no mail" test cannot fail: it never proves `sendMail` reached the core | ✅ | Proven from the core's own development-mode mail log. With `sendMail` cut off from the core, both logOnly mail tests now fail; before, they passed |
+| RV6 | "honours apiBase" passes vacuously when nothing is sent | ✅ | The test now requires the ingest request before checking hosts |
+| RV7 | `settle()` waits a fixed number of ticks, so tests could flake under load | ✅ | Positive checks wait on the observed condition with `vi.waitFor`. `settle()` is kept only for "nothing happened" checks, after a positive signal has proven the core is live. 10 consecutive runs: 10 passed |
+| RV8 | A `console.log` spy is not restored if an assertion fails | ✅ | `afterEach(vi.restoreAllMocks)` |
+| RV9 | `tsconfig.lib.json` still excludes the deleted `src/test.ts` | ✅ | Removed |
 | RV10 | The same diagnostic suppressions are copied into five tsconfigs | ⏸️ | Deferred on purpose: §2.2 removes all five, so consolidating them first is double work |
 
 ## 6. CI and release pipeline — T3, R1–R4

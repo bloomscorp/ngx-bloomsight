@@ -3,7 +3,7 @@ import {TestBed} from '@angular/core/testing';
 
 import {
 	API_BASE, GMAIL_SEND, PROPERTY_TOKEN, SMTP_SEND,
-	bootConsumerApp, settle, stubNetwork
+	bootConsumerApp, stubNetwork
 } from './integration-harness';
 import {
 	BloomsightConfig, BloomsightMailService
@@ -37,10 +37,9 @@ describe('integration: mail', () => {
 		bootConsumerApp(config);
 
 		TestBed.inject(BloomsightMailService).sendMail('engine-1', 'template-2', 'owner-3', form({name: 'Asha'}), vi.fn(), vi.fn());
-		await settle();
 
+		await vi.waitFor(() => expect(net.to(GMAIL_SEND)).toHaveLength(1));
 		const sent = net.to(GMAIL_SEND);
-		expect(sent).toHaveLength(1);
 		expect(sent[0]!.method).toBe('POST');
 		expect(net.to(SMTP_SEND)).toHaveLength(0);
 	});
@@ -52,9 +51,8 @@ describe('integration: mail', () => {
 		bootConsumerApp(config);
 
 		TestBed.inject(BloomsightMailService).sendMail('engine-1', 'template-2', 'owner-3', form({}), vi.fn(), vi.fn(), 'CUSTOM_SMTP');
-		await settle();
 
-		expect(net.to(SMTP_SEND)).toHaveLength(1);
+		await vi.waitFor(() => expect(net.to(SMTP_SEND)).toHaveLength(1));
 		expect(net.to(GMAIL_SEND)).toHaveLength(0);
 	});
 
@@ -67,8 +65,8 @@ describe('integration: mail', () => {
 			form({name: 'Asha', email: 'asha@example.com'}),
 			vi.fn(), vi.fn()
 		);
-		await settle();
 
+		await vi.waitFor(() => expect(net.to(GMAIL_SEND)).toHaveLength(1));
 		const body = net.to(GMAIL_SEND)[0]!.body as FormData;
 		expect(body).toBeInstanceOf(FormData);
 		expect(body.get('engineId')).toBe('engine-1');
@@ -86,9 +84,8 @@ describe('integration: mail', () => {
 		const onError = vi.fn();
 
 		TestBed.inject(BloomsightMailService).sendMail('e', 't', 'o', form({}), onSuccess, onError);
-		await settle();
 
-		expect(onSuccess).toHaveBeenCalledTimes(1);
+		await vi.waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
 		expect(onError).not.toHaveBeenCalled();
 	});
 
@@ -99,9 +96,8 @@ describe('integration: mail', () => {
 		const onError = vi.fn();
 
 		TestBed.inject(BloomsightMailService).sendMail('e', 't', 'o', form({}), onSuccess, onError);
-		await settle();
 
-		expect(onError).toHaveBeenCalledTimes(1);
+		await vi.waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
 		expect(onSuccess).not.toHaveBeenCalled();
 	});
 
@@ -112,9 +108,8 @@ describe('integration: mail', () => {
 		const onError = vi.fn();
 
 		TestBed.inject(BloomsightMailService).sendMail('e', 't', 'o', form({}), onSuccess, onError);
-		await settle();
 
-		expect(onError).toHaveBeenCalledTimes(1);
+		await vi.waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
 		expect(onSuccess).not.toHaveBeenCalled();
 	});
 });

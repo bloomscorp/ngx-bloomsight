@@ -33,8 +33,11 @@ describe('integration: stopSimpleEvent', () => {
 
 		events.resolveSimpleEvent('signup-clicked');
 		events.resolveDataEvent('plan-selected', {plan: 'pro'});
-		await settle();
 
+		// The data event arriving proves the core is live; only then does the
+		// absence of the simple event mean anything.
+		await vi.waitFor(() => expect(net.to(INGEST_EVENT)).toHaveLength(1));
+		await settle();
 		const tokens = net.to(INGEST_EVENT).map((r) => (r.body as {eventToken: string}).eventToken);
 		expect(tokens).toEqual(['plan-selected']);
 	});

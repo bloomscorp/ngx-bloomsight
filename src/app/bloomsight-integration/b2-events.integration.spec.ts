@@ -40,10 +40,9 @@ describe('integration: an app on blooms.ai (target "blooms-ai")', () => {
 			bootConsumerApp(config);
 
 			TestBed.inject(BloomsightEventService).resolveSimpleEvent('signup-clicked');
-			await settle();
 
+			await vi.waitFor(() => expect(net.to(INGEST_EVENT)).toHaveLength(1));
 			const sent = net.to(INGEST_EVENT);
-			expect(sent).toHaveLength(1);
 			expect(sent[0]!.method).toBe('POST');
 			expect(sent[0]!.body).toMatchObject({
 				property: PROPERTY_TOKEN,
@@ -56,10 +55,9 @@ describe('integration: an app on blooms.ai (target "blooms-ai")', () => {
 			bootConsumerApp(config);
 
 			TestBed.inject(BloomsightEventService).resolveDataEvent('plan-selected', {plan: 'pro', seats: 5});
-			await settle();
 
+			await vi.waitFor(() => expect(net.to(INGEST_EVENT)).toHaveLength(1));
 			const sent = net.to(INGEST_EVENT);
-			expect(sent).toHaveLength(1);
 			expect(sent[0]!.body).toMatchObject({
 				eventToken: 'plan-selected',
 				data: {plan: 'pro', seats: 5}
@@ -71,8 +69,8 @@ describe('integration: an app on blooms.ai (target "blooms-ai")', () => {
 			bootConsumerApp(config);
 
 			TestBed.inject(BloomsightEventService).resolveSimpleEvent('signup-clicked');
-			await settle();
 
+			await vi.waitFor(() => expect(net.to(INGEST_EVENT)).toHaveLength(1));
 			const body = net.to(INGEST_EVENT)[0]!.body as Record<string, unknown>;
 			for (const field of ['userId', 'sessionId', 'occurredAt', 'url', 'browserName', 'osName', 'deviceType']) {
 				expect(body, `payload is missing ${field}`).toHaveProperty(field);
@@ -91,8 +89,8 @@ describe('integration: an app on blooms.ai (target "blooms-ai")', () => {
 			bootConsumerApp(config);
 
 			TestBed.inject(BloomsightEventService).resolveSimpleEvent('signup-clicked', 'hero-button');
-			await settle();
 
+			await vi.waitFor(() => expect(net.to(INGEST_EVENT)).toHaveLength(1));
 			expect(JSON.stringify(net.to(INGEST_EVENT)[0]!.body)).not.toContain('hero-button');
 		});
 
@@ -101,8 +99,10 @@ describe('integration: an app on blooms.ai (target "blooms-ai")', () => {
 			bootConsumerApp(config);
 
 			TestBed.inject(BloomsightEventService).resolveSimpleEvent('signup-clicked');
-			await settle();
 
+			// `every` is true of an empty list, so first require that the event
+			// was actually sent (review RV6).
+			await vi.waitFor(() => expect(net.to(INGEST_EVENT)).toHaveLength(1));
 			expect(net.requests.every((r) => r.url.startsWith(API_BASE))).toBe(true);
 			expect(net.toHost('https://z.bloomscorp.com')).toHaveLength(0);
 		});
@@ -116,10 +116,10 @@ describe('integration: an app on blooms.ai (target "blooms-ai")', () => {
 
 			events.resolveSimpleEvent('signup-clicked');
 			events.resolveDataEvent('plan-selected', {plan: 'pro'});
-			await settle();
 
+			await vi.waitFor(() => expect(net.to(INGEST_EVENT)).toHaveLength(2));
+			await settle();
 			expect(net.toHost(B1_HOST)).toHaveLength(0);
-			expect(net.to(INGEST_EVENT)).toHaveLength(2);
 		});
 	});
 
@@ -140,8 +140,9 @@ describe('integration: an app on blooms.ai (target "blooms-ai")', () => {
 			// whichever test ran first.) An explicit event must get through, and be
 			// the only thing that does.
 			events.resolveSimpleEvent('liveness-check');
-			await settle();
 
+			await vi.waitFor(() => expect(net.to(INGEST_EVENT)).toHaveLength(1));
+			await settle();
 			expect(net.to(INGEST_EVENT).map((r) => (r.body as {eventToken: string}).eventToken)).toEqual(['liveness-check']);
 			expect(net.requests.some((r) => r.url.includes('page-view'))).toBe(false);
 			expect(net.toHost(B1_HOST)).toHaveLength(0);
@@ -157,13 +158,12 @@ describe('integration: an app on blooms.ai (target "blooms-ai")', () => {
 			bootConsumerApp(config);
 
 			TestBed.inject(BloomsightEventService).resolveSimpleEvent('signup-clicked');
-			await settle();
 
-			expect(errors).toContainEqual(expect.objectContaining({
+			await vi.waitFor(() => expect(errors).toContainEqual(expect.objectContaining({
 				code: 'ORIGIN_REJECTED',
 				status: 403,
 				eventToken: 'signup-clicked'
-			}));
+			})));
 		});
 
 		it('reports an unreachable server as NETWORK_FAILURE', async () => {
@@ -171,12 +171,11 @@ describe('integration: an app on blooms.ai (target "blooms-ai")', () => {
 			bootConsumerApp(config);
 
 			TestBed.inject(BloomsightEventService).resolveSimpleEvent('signup-clicked');
-			await settle();
 
-			expect(errors).toContainEqual(expect.objectContaining({
+			await vi.waitFor(() => expect(errors).toContainEqual(expect.objectContaining({
 				code: 'NETWORK_FAILURE',
 				eventToken: 'signup-clicked'
-			}));
+			})));
 		});
 
 		it('reports every failure, not only the first of each kind', async () => {
@@ -191,10 +190,10 @@ describe('integration: an app on blooms.ai (target "blooms-ai")', () => {
 
 			events.resolveSimpleEvent('first');
 			events.resolveSimpleEvent('second');
-			await settle();
 
-			const rejected = errors.filter((e) => e.code === 'ORIGIN_REJECTED').map((e) => e.eventToken);
-			expect(rejected).toEqual(['first', 'second']);
+			await vi.waitFor(() => expect(
+				errors.filter((e) => e.code === 'ORIGIN_REJECTED').map((e) => e.eventToken)
+			).toEqual(['first', 'second']));
 		});
 	});
 });
