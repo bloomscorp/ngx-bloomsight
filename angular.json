@@ -91,14 +91,18 @@
               "src/app/**/*.ts"
             ],
             "coverageExclude": [
-              "**/*.spec.ts"
+              "**/*.spec.ts",
+              "src/app/bloomsight-integration/integration-harness.ts"
             ],
             "coverageReporters": [
               "text-summary",
               "html",
               "lcovonly"
             ],
-            "isolate": true
+            "isolate": true,
+            "setupFiles": [
+              "src/test-setup.ts"
+            ]
           }
         }
       }
