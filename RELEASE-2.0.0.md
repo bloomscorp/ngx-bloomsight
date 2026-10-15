@@ -12,7 +12,7 @@
 
 > **Live tracker.** Updated and committed as each task lands.
 >
-> **Now:** §8 ✅ **passed**. 2.0.0 is ready to release. Waiting on the owner: merging `feat/2.0.0` into `main`, then `npm run release` (it pushes a release commit and tag to `main`). The npm trusted publisher validates on that first publish, which must happen before **2026-10-17 17:17 UTC** or be re-created. The npm trusted publisher is pending validation by the first publish, which must happen before **2026-10-17 17:17 UTC** or be re-created.
+> **Now:** 🎉 **`@bloomscorp/ngx-bloomsight@2.0.0` is published** (2026-10-15 18:11 UTC), `latest`, with provenance, by the release workflow. Verified from the registry: a real Angular 19 app installs 2.0.0 from npm, builds, and passes the runtime check under Zone.js. Left: 7.5, the Angular notes in the two migration docs.
 >
 > **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
 > `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released ·
@@ -534,6 +534,16 @@ Two audiences, two documents, plus the repository page:
 | 8.8 | The tarball inspected by hand | ✅ | 6 files: bundle, source map, types, manifest, README, LICENSE. Manifest complete, with `repository`. The 5 kB bundle read line by line: exactly the three runtime exports, no component, no `ChangeDetectionStrategy`, declarations only of kinds Angular 19 links. Version reads 1.6.0 until `release-it` bumps and rebuilds |
 | 8.9 | `minVersion` in the built artifact ≤ 19.0.0 | ✅ | `12.0.0` on all six declarations |
 
+## 8a. The release — ✅ 2026-10-15
+
+- `main` fast-forwarded to `feat/2.0.0` (55 commits) and pushed, with the owner's permission; CI green on it
+- `npm run release`: every gate passed, `chore: release v2.0.0` and tag `v2.0.0` pushed
+- **First publish attempt failed**, at `npm publish` only, with `E404 … do not have permission`. Every gate had passed and the provenance statement was signed; npm refused the upload because the trusted publisher's workflow filename read `release.yaml`, not `release.yml`. npm does not allow editing that field, so the entry was deleted and re-created. Nothing was published by the failed attempt
+- **Re-run (attempt 2) succeeded**: published 18:11 UTC, GitHub release created
+- Verified from the registry, not the local tarball: the Angular 19 app installs `2.0.0` from `registry.npmjs.org` and passes its build and the Zone.js runtime check. `ETARGET` for a minute after publishing was the npm CDN catching up, as before
+
+Lesson, added to RELEASING.md: the trusted publisher's fields must match **exactly**, and a mismatch shows as a 404 at the upload, not as an authentication error.
+
 ## 9. Suggested order
 
 1. ~~D1–D7 answered~~ ✅ (§0)
@@ -549,4 +559,5 @@ Two audiences, two documents, plus the repository page:
 11. ~~§6 CI and release~~ ✅
 12. ~~§7 docs~~ ✅
 13. ~~§8 verification gate~~ ✅
-14. **Merge to `main`, then publish 2.0.0** ← next (owner)
+14. ~~Merge to `main`, then publish 2.0.0~~ ✅ 2026-10-15
+15. **7.5, post-release doc notes** ← next

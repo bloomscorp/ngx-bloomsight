@@ -63,6 +63,14 @@ OIDC identity and no `GITHUB_TOKEN`. Before 2.0.0 every release was a manual
 to create the GitHub release without a token committed and tagged, then failed
 (R2).
 
+**A trusted publisher mismatch looks like a 404.** If the organisation,
+repository or workflow filename on npm differ from GitHub's in any way —
+`release.yaml` for `release.yml` was enough, at 2.0.0 — npm answers the upload
+with `E404 … could not be found or you do not have permission`, after the
+provenance statement has already been signed. npm does not allow editing the
+filename: delete the entry, create it again, then **Re-run failed jobs** on the
+same Release run. No new tag is needed, because nothing was published.
+
 **Provenance needs `repository` in the published manifest.** npm checks that
 `repository.url` names the GitHub repository the workflow ran in, and rejects
 the publish otherwise. `verify:package` checks it before publishing.
