@@ -13,7 +13,7 @@
 
 > **Live tracker.** Updated and committed as each task lands.
 >
-> **Now:** §5, task 5.6. Measuring the new coverage and enforcing thresholds.
+> **Now:** §5, task 5.7. Closing T1 and recording the findings.
 >
 > **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
 > `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released ·
@@ -326,8 +326,8 @@ test, because each proves something the other cannot:
 | 5.3 | `BloomsightMailService` unit tests | ✅ | 8 tests. Mutation-tested: swapped arguments, a changed default engine and swapped callbacks each fail their own test |
 | 5.4 | Init runs once with both services injected (**B1**) | ✅ | Both injection orders. Removing the init-once guard fails both |
 | 5.5 | Demo app integration tests, real core, `fetch` stubbed | ✅ | 20 tests across 4 files, real core, fetch stubbed. Needed a jsdom matchMedia stub. Every 'nothing was sent' test proves the core was alive. All wrapper mutations caught at request level. Found: label is never sent by any backend, and logOnly mail calls neither callback |
-| 5.6 | Enforce coverage thresholds from the new baseline | 🔄 | Deferred from 3.10 until the services were under test |
-| 5.7 | Close T1 in MODERNISATION.md | ⬜ | |
+| 5.6 | Enforce coverage thresholds from the new baseline | ✅ | Library 52/67/33/33% → 100/100/100/100%. Enforced at 100% per file; one untested method fails with the file named. Applies under npm run test:coverage, which §6's CI must run |
+| 5.7 | Close T1 in MODERNISATION.md | 🔄 |  |
 
 Then: code review of the branch, and push.
 
