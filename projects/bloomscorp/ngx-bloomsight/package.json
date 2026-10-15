@@ -1,6 +1,6 @@
 {
   "name": "@bloomscorp/ngx-bloomsight",
-  "version": "1.6.0",
+  "version": "2.0.0",
   "description": "Angular wrapper for bloomsight.js: provideBloomsight() and one BloomsightService for events, page views, mail and errors.",
   "keywords": [
     "angular",

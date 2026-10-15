@@ -1,4 +1,28 @@
+# Changelog
 
+# [2.0.0](https://github.com/bloomscorp/ngx-bloomsight/compare/v1.6.0...v2.0.0) (2026-10-15)
+
+* feat!: provideBloomsight() and one BloomsightService replace the 1.x module ([ed6091c](https://github.com/bloomscorp/ngx-bloomsight/commit/ed6091ce0ff9247e1c93d6242fe582bf4aeed484))
+
+### Bug Fixes
+
+* an init failure no longer breaks the host app (review RV4) ([1c67e8a](https://github.com/bloomscorp/ngx-bloomsight/commit/1c67e8a4acd632741b8dc634ed0739611d529734))
+* export BloomsightError so apps never import the core ([ac6d4b4](https://github.com/bloomscorp/ngx-bloomsight/commit/ac6d4b4e227e13f95ca6cc9560fc9c89c114cafc))
+* remove all deep imports into bloomsight.js (P1) ([e9da741](https://github.com/bloomscorp/ngx-bloomsight/commit/e9da741c057a9a0a2653b85b2fa4a0ba93d4af4d))
+* single SDK init, correct peers, redirect-aware page views, version sync ([60ecc44](https://github.com/bloomscorp/ngx-bloomsight/commit/60ecc44fe20ba9b974c31574f5dbe679829d5e17))
+* the published component broke Angular 19-21 builds (review RV1, RV2) ([e410276](https://github.com/bloomscorp/ngx-bloomsight/commit/e41027683b8d018a27abe2c7d5f2e8c5b2e8b64e))
+* type the mail engine as the core's own type, without a cast (review RV3) ([f0cd058](https://github.com/bloomscorp/ngx-bloomsight/commit/f0cd058859e348a43761d653995cffd866d94fa0))
+
+### Features
+
+* rebuild the demo app on the 2.0.0 API, safe by default ([d8434ec](https://github.com/bloomscorp/ngx-bloomsight/commit/d8434ec774bcc0d1c4e226eca210cdc55e1a5ba9))
+
+### BREAKING CHANGES
+
+* forRoot() and both 1.x services are gone. Configure with
+  provideBloomsight(config) and inject BloomsightService. The label argument
+  is removed from track() and trackData(), and sendMail takes one object and
+  returns an Observable instead of taking callbacks.
 
 # [1.6.0](https://github.com/bloomscorp/ngx-bloomsight/compare/v1.4.22...v1.5.1) (2026-07-30)
 
