@@ -86,7 +86,18 @@
           "builder": "@angular/build:unit-test",
           "options": {
             "tsConfig": "tsconfig.spec.json",
-            "runner": "vitest"
+            "runner": "vitest",
+            "coverageInclude": [
+              "src/app/**/*.ts"
+            ],
+            "coverageExclude": [
+              "**/*.spec.ts"
+            ],
+            "coverageReporters": [
+              "text-summary",
+              "html",
+              "lcovonly"
+            ]
           }
         }
       }
@@ -116,7 +127,18 @@
           "builder": "@angular/build:unit-test",
           "options": {
             "tsConfig": "projects/bloomscorp/ngx-bloomsight/tsconfig.spec.json",
-            "runner": "vitest"
+            "runner": "vitest",
+            "coverageInclude": [
+              "projects/bloomscorp/ngx-bloomsight/src/lib/**/*.ts"
+            ],
+            "coverageExclude": [
+              "**/*.spec.ts"
+            ],
+            "coverageReporters": [
+              "text-summary",
+              "html",
+              "lcovonly"
+            ]
           }
         }
       }

@@ -13,7 +13,7 @@
 
 > **Live tracker.** Updated and committed as each task lands.
 >
-> **Now:** §1 Phase 3, task 3.10. Coverage reporting under Vitest.
+> **Now:** §1 Phase 3, task 3.11. Sweeping for leftover Karma, Jasmine and Zone references.
 >
 > **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
 > `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released
@@ -167,8 +167,8 @@ All local, on `feat/2.0.0`. Nothing is pushed or published in this phase.
 | 3.7 | Demo app `build` → `@angular/build:application`, via the official `use-application-builder` migration (**A6**) | ✅ | Done with the official migration. It also removed @angular-devkit/build-angular entirely. Output moved to dist/ngx-bloomsight/browser |
 | 3.8 | Demo app `test` target → Vitest, tests green | ✅ | 3/3. Needed two demo changes: zoneless (D6), since the builder's setup uses top-level await which Zone.js forbids, and a standalone AppComponent. Bundle 291.56 → 253.94 kB; verified booting in headless Chrome |
 | 3.9 | Remove Karma: `karma`, `karma-*`, `jasmine-core`, `@types/jasmine`, `istanbul-lib-instrument`; both `karma.conf.js`; both `src/test.ts`; Jasmine types in the spec tsconfigs | ✅ | Removed 9 packages, including zone.js (an optional peer, now unused), both karma.conf.js and both src/test.ts. Everything still green |
-| 3.10 | Coverage reporting under Vitest | 🔄 |  |
-| 3.11 | Sweep: no Karma or Jasmine references outside historical logs | ⬜ | |
+| 3.10 | Coverage reporting under Vitest | ✅ | npm run test:coverage, v8 provider. Library baseline: 52% statements, 33% functions (T1, measured). Thresholds deliberately deferred to §5: set now, they would lock the bar at the known gap |
+| 3.11 | Sweep: no Karma or Jasmine references outside historical logs | 🔄 |  |
 | 3.12 | Close out the docs: §4 here, **A6** and **A7** in MODERNISATION.md | ⬜ | |
 
 After Phase 3: §5 real tests, §2 API rewrite, §3 demo app, §6 CI and release,
