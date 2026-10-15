@@ -12,7 +12,7 @@
 
 > **Live tracker.** Updated and committed as each task lands.
 >
-> **Now:** §2, the API rewrite, is ✅ done and committed locally on `feat/2.0.0`, not yet pushed. Next: §3, the demo app rewrite.
+> **Now:** 🔄 §3, the demo app rebuild. Design settled (§3.3); working through the §3.4 task table. §2 is pushed.
 >
 > **Done so far:** decisions (§0) · core P6 fix · Vitest trial run ·
 > `bmx-pastebox@1.1.0` released · `bloomsight.js@0.9.2` released ·
@@ -270,7 +270,7 @@ stability tag read from `@angular/core@19.0.0`'s own declarations:
 
 ---
 
-## 3. Demo app — complete rewrite
+## 3. Demo app — complete rewrite — 🔄 in progress
 
 Deleted and rebuilt. It currently proves nothing: it imports the module without
 `forRoot()`, so it configures nothing, and it imports the library by source path
@@ -312,6 +312,61 @@ The point of the rewrite: each of these needs a visible, clickable surface.
 | **Lazy route** | A lazy-loaded feature that uses the service — proves **B7** is gone |
 | **Mail without events** | A component that injects the service and only sends mail — proves **B6** is gone |
 | **No core import** | The whole app compiles with zero imports of `@bloomscorp/bloomsight.js` — the facade rule, demonstrated |
+
+### 3.3 The design — settled 2026-10-15
+
+**How it stays safe (D5).** The demo's configuration lives in the browser's
+`localStorage`, edited on a Settings page and applied by reloading, because the
+SDK reads its configuration once, at startup. The defaults are `logOnly: true`,
+`isDevelopmentMode: true` and `debug: true`, so a fresh checkout sends no
+events and no mail. The header always shows whether the demo is in `logOnly` or
+live, and which backend it would write to. Turning `logOnly` off requires a real
+property token; the default token is a placeholder.
+
+**How you see what happened.** Before the app starts, the demo wraps `fetch`
+and `console`, so every request the SDK makes and every line it logs appears in
+an activity panel. Both are the demo's own instrumentation and import nothing
+from the core. A separate errors panel shows `errors$`. The app's `onError` is
+also wired to the activity panel, which is the only place an `INIT_FAILED`
+can be seen.
+
+| Route | Shows | Feature (§3.2) |
+|---|---|---|
+| `/` | What the demo covers, with links | — |
+| `/events` | `track` and `trackData` with a JSON payload editor | simple and data events |
+| `/page-views` | Navigation between two pages, plus two old URLs that redirect to one of them, with the router's own `url` → `urlAfterRedirects` beside each | page views, `urlAfterRedirects`, dedupe |
+| `/mail` | Engine, ids and template fields; send status | GMAIL, CUSTOM_SMTP, B1-only mail, `logOnly` completes (F2), **mail without events (B6)** |
+| `/settings` | Every `BloomsightConfig` field | B1 ↔ B2, `apiBase`, debug, kill switches, `logOnly` |
+
+Every page is a lazy route, and the mail page injects the service only to send
+mail, which covers **lazy route (B7)** and **mail without events (B6)**.
+
+**Angular 22 in the demo, since the API cap applies to the library only:**
+standalone components with no NgModule, `bootstrapApplication`, zoneless,
+signals, `computed` and `linkedSignal`, `toSignal`, `@if` / `@for` / `@let`,
+route `title`, `provideBrowserGlobalErrorListeners`, and the Angular 20 file
+naming (`app.ts` rather than `app.component.ts`).
+
+**T2.** The demo imports `@bloomscorp/ngx-bloomsight`, which `tsconfig` maps to
+`dist/`. So the app, and its integration tests, run the **built** package
+through Angular's linker, exactly as a consumer does. `build`, `start` and
+`test` run `build-lib` first, so a clean checkout works.
+
+### 3.4 Tasks
+
+| # | Task | Status | Notes |
+|---|---|---|---|
+| 3.1 | Delete the old demo: `AppModule`, routing module, stock welcome page, `environments/`, `fileReplacements` | ⬜ | |
+| 3.2 | Remove unused dependencies: `@angular/platform-browser-dynamic`, `@angular/animations`, `@angular/forms` | ⬜ | |
+| 3.3 | Settings store: defaults (D5), `localStorage` with a safe fallback, reload to apply | ⬜ | |
+| 3.4 | Activity capture: `fetch` and `console`, installed before bootstrap | ⬜ | |
+| 3.5 | Shell: header with live/logOnly status, navigation, activity and `errors$` panels | ⬜ | |
+| 3.6 | Pages: overview, events, page views, mail, settings, all lazy | ⬜ | |
+| 3.7 | T2: import the package by name; `build-lib` before `build`, `start` and `test` | ⬜ | |
+| 3.8 | Facade check: `npm run verify:facade` fails if any demo file imports `@bloomscorp/bloomsight.js` | ⬜ | |
+| 3.9 | Demo tests: settings, activity capture and each page, against the built library and the real core | ⬜ | |
+| 3.10 | Verified in a real browser: boots, every page works, and `logOnly` sends nothing | ⬜ | |
+| 3.11 | Gate: CSS budget warning gone, build, tests, `verify:compat` | ⬜ | |
 
 ---
 
@@ -453,5 +508,5 @@ Mirror what `bloomsight.js` ended up with; it has already been through this.
 7. ~~§5 real tests~~ ✅ 31 library + 20 integration tests, 100% library coverage
 8. ~~Code review, then push~~ ✅ (§5a)
 9. ~~§2 API rewrite~~ ✅
-10. **§3 demo app** ← next. Then §6 CI and release → §7 docs
+10. **§3 demo app** ← now. Then §6 CI and release → §7 docs
 11. Verification gate (§8), then publish 2.0.0
