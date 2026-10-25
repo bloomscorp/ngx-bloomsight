@@ -18,6 +18,12 @@ subscribed.
 
 An app on Angular 18 or older has to upgrade Angular first.
 
+> **From 2.0.0 to 2.1.0** nothing changes in your code. 2.1.0 needs
+> `@bloomscorp/bloomsight.js` 0.10.0 or newer, and adds a way to move mail to
+> blooms.ai on its own: `provideBloomsightMail()` for apps that only send mail,
+> or `emailTarget` in `provideBloomsight()`. See the README, "Moving mail to
+> blooms.ai".
+
 **Do this upgrade on its own.** If the app is also moving to blooms.ai, upgrade
 the library first while keeping `target` as it is, check events still arrive,
 and only then change `target`. If something goes wrong, you will know which
@@ -32,7 +38,7 @@ grep -rnE "NgxBloomsightModule|BloomsightEventService|BloomsightMailService|lib-
 ## 1. Install
 
 ```bash
-npm install @bloomscorp/ngx-bloomsight@^2.0.0 @bloomscorp/bloomsight.js@^0.9.2
+npm install @bloomscorp/ngx-bloomsight@^2.1.0 @bloomscorp/bloomsight.js@^0.10.0
 ```
 
 ## 2. Replace `forRoot()` with `provideBloomsight()`
@@ -190,7 +196,7 @@ None of these needs a code change, but you may notice them:
 
 ## Checklist
 
-- [ ] Angular 19 or newer, and `@bloomscorp/bloomsight.js` ≥ 0.9.2
+- [ ] Angular 19 or newer, and `@bloomscorp/bloomsight.js` ≥ 0.10.0 (≥ 0.9.2 for 2.0.0)
 - [ ] `provideBloomsight()` once, in the root providers; no `NgxBloomsightModule` left
 - [ ] No `<lib-ngx-bloomsight>`
 - [ ] `BloomsightService` everywhere; `track` / `trackData`; no labels

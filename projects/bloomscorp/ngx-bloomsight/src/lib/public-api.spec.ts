@@ -6,6 +6,7 @@ vi.mock('@bloomscorp/bloomsight.js', () => ({
 	resolveSimpleEvent: vi.fn(),
 	resolveDataEvent: vi.fn(),
 	pageViewObserver: vi.fn(),
+	configureEmail: vi.fn(),
 	sendEmail: vi.fn()
 }));
 
@@ -20,18 +21,48 @@ import {
 	BloomsightEmailEngine,
 	BloomsightError,
 	BloomsightEventData,
+	BloomsightMailConfig,
 	BloomsightMailRequest,
 	BloomsightService,
-	provideBloomsight
+	provideBloomsight,
+	provideBloomsightMail
 } from '../public-api';
 
 describe('the public API', () => {
 
-	it('exports exactly the 2.0.0 runtime surface', () => {
+	it('exports exactly the 2.1.0 runtime surface', () => {
 		// Pins the deletions as much as the additions: NgxBloomsightModule (D7),
 		// the scaffolding component and empty service (P2), and the two 1.x
-		// services must not come back by accident.
-		expect(Object.keys(api).sort()).toEqual(['BLOOMSIGHT_CONFIG', 'BloomsightService', 'provideBloomsight']);
+		// services must not come back by accident. 2.1.0 added
+		// provideBloomsightMail; its token stays internal.
+		expect(Object.keys(api).sort()).toEqual(['BLOOMSIGHT_CONFIG', 'BloomsightService', 'provideBloomsight', 'provideBloomsightMail']);
+	});
+
+	it('lets an email-only app move its mail to blooms.ai without importing the core', () => {
+		// thecropcircle.in's setup: no property token, no events, mail only.
+		const failures: BloomsightError[] = [];
+		function recordFailure(error: BloomsightError): void {
+			failures.push(error);
+		}
+
+		const mailOnly: BloomsightMailConfig = {target: 'blooms-ai', apiBase: 'https://z.bloomscorp.com', debug: false, logOnly: false, onError: recordFailure};
+		TestBed.configureTestingModule({providers: [provideBloomsightMail(mailOnly)]});
+
+		expect(TestBed.inject(BloomsightService)).toBeInstanceOf(BloomsightService);
+		expect(failures).toEqual([]);
+	});
+
+	it('takes the mail switch in BloomsightConfig too, for apps that record events', () => {
+		const config: BloomsightConfig = {propertyToken: 't', isDevelopmentMode: false, emailTarget: 'blooms-ai', emailApiBase: 'https://z.bloomscorp.com'};
+
+		expect(config.emailTarget).toBe('blooms-ai');
+	});
+
+	it('rejects a mail target the core does not have, at compile time', () => {
+		// @ts-expect-error 'blooms' is not a target.
+		const config: BloomsightMailConfig = {target: 'blooms'};
+
+		expect(config.target).toBe('blooms');
 	});
 
 	it('lets an app configure a blooms.ai migration without importing the core', () => {

@@ -6,7 +6,7 @@ import {provideRouter, Router, Routes} from '@angular/router';
 // Imported exactly as the demo app imports the library, and never from
 // '@bloomscorp/bloomsight.js': these tests are a consumer, and a consumer must
 // not need the core (the facade rule, MODERNISATION.md §2).
-import {BloomsightConfig, provideBloomsight} from '@bloomscorp/ngx-bloomsight';
+import {BloomsightConfig, BloomsightMailConfig, BloomsightService, provideBloomsight, provideBloomsightMail} from '@bloomscorp/ngx-bloomsight';
 
 /**
  * Shared support for the demo app's integration tests.
@@ -33,7 +33,11 @@ export const PROPERTY_CHECK = `${API_BASE}/api/bloomsight/ingest/property/${PROP
 /** What blooms.ai answers it with for a healthy property on this page's host (jsdom's is localhost). */
 export const ACTIVE_PROPERTY = {name: 'localhost', status: 'active', verified: true};
 
-/** The standalone Bloomsight server (B1). Mail always goes here. */
+/** blooms.ai's mail endpoint, once mail is moved there (2.1.0). */
+export const B2_MAIL_SEND = `${API_BASE}/api/bloomsight/email/send`;
+export const B2_MAIL_SEND_PRODUCTION = 'https://z.bloomscorp.com/api/bloomsight/email/send';
+
+/** The standalone Bloomsight server (B1). Mail goes here unless it is moved. */
 export const B1_HOST = 'https://footprint-api.bloomscorp.com';
 export const GMAIL_SEND = `${B1_HOST}/api/v1/email-notifier/gmail/send`;
 export const SMTP_SEND = `${B1_HOST}/api/v1/email-notifier/smtp/send`;
@@ -111,6 +115,12 @@ export function bootConsumerApp(config: BloomsightConfig): void {
 		providers: [provideRouter(routes), provideBloomsight(config)]
 	});
 	TestBed.inject(Router);
+}
+
+/** As `bootConsumerApp`, for an app that only sends mail: `provideBloomsightMail()`, and no router. */
+export function bootMailOnlyApp(config?: BloomsightMailConfig): void {
+	TestBed.configureTestingModule({providers: [provideBloomsightMail(config)]});
+	TestBed.inject(BloomsightService);
 }
 
 /** Let pending fetches and their promise chains settle. */

@@ -1,7 +1,7 @@
 {
   "name": "@bloomscorp/ngx-bloomsight",
   "version": "2.0.0",
-  "description": "Angular wrapper for bloomsight.js: provideBloomsight() and one BloomsightService for events, page views, mail and errors.",
+  "description": "Angular wrapper for bloomsight.js: provideBloomsight() or provideBloomsightMail(), and one BloomsightService for events, page views, mail and errors.",
   "keywords": [
     "angular",
     "bloomsight",
@@ -25,7 +25,7 @@
     "@angular/core": ">=19.0.0 <23.0.0",
     "@angular/router": ">=19.0.0 <23.0.0",
     "rxjs": ">=7.0.0 <9.0.0",
-    "@bloomscorp/bloomsight.js": ">=0.9.2 <1.0.0"
+    "@bloomscorp/bloomsight.js": ">=0.10.0 <1.0.0"
   },
   "dependencies": {
     "tslib": "^2.3.0"

@@ -17,7 +17,7 @@ inside blooms.ai.
 | | Supported |
 |---|---|
 | Angular (`@angular/core`, `common`, `router`) | **19, 20, 21, 22**. CI compiles the published package with each of them |
-| `@bloomscorp/bloomsight.js` | `>=0.9.2 <1.0.0` |
+| `@bloomscorp/bloomsight.js` | `>=0.10.0 <1.0.0` |
 | RxJS | 7 or 8 |
 
 ## Install
@@ -69,6 +69,32 @@ including lazy-loaded routes.
 Call it **once**, in the root providers: not in a lazy route's `providers`, and
 not in a component.
 
+### Apps that only send mail
+
+An app that sends mail and records no events uses `provideBloomsightMail()`
+instead. It needs no property token, starts no tracking, and sends nothing until
+the app calls `sendMail()`:
+
+```ts
+providers: [
+  provideRouter(routes),
+  provideBloomsightMail()                         // the standalone Bloomsight server
+  // provideBloomsightMail({target: 'blooms-ai'}) // or blooms.ai
+]
+```
+
+| Field | Type | Default | What it does |
+|---|---|---|---|
+| `target` | `'bloomsight'` \| `'blooms-ai'` | `'bloomsight'` | Which server receives the mail |
+| `apiBase` | `string` | `https://z.bloomscorp.com` | blooms.ai only: the API origin |
+| `onError` | `(error: BloomsightError) => void` | — | blooms.ai only: each mail failure, with the server's code |
+| `debug` | `boolean` | `false` | Full logging of sends |
+| `logOnly` | `boolean` | `false` | Logs each mail and sends nothing; `sendMail()` still succeeds |
+
+`BloomsightService` works the same with either provider. Under
+`provideBloomsightMail()`, `track()` and `trackData()` do nothing, and say so
+once in the console.
+
 ## Configuration
 
 | Field | Type | Default | What it does |
@@ -79,6 +105,8 @@ not in a component.
 | `apiBase` | `string` | `https://z.bloomscorp.com` | blooms.ai only: the API origin, for pointing a project at staging first |
 | `logOnly` | `boolean` | `false` | Runs everything and sends nothing: each event and mail is logged instead. For demos, tests and dry runs |
 | `debug` | `boolean` | `false` | blooms.ai only: full logging without `isDevelopmentMode` |
+| `emailTarget` | `'bloomsight'` \| `'blooms-ai'` | `'bloomsight'` | Which server receives mail. Independent of `target`. See [Moving mail to blooms.ai](#moving-mail-to-bloomsai) |
+| `emailApiBase` | `string` | `https://z.bloomscorp.com` | blooms.ai mail only: the API origin. Not shared with `apiBase` |
 | `onError` | `(error: BloomsightError) => void` | — | Called for every failure the SDK reports. See [Errors](#errors) |
 | `stopAll` | `boolean` | `false` | Records nothing |
 | `stopSimpleEvent` | `boolean` | `false` | Records no simple events |
@@ -162,12 +190,14 @@ The result behaves like `HttpClient`:
 - **Nothing is sent until you subscribe**, and each subscription sends once
 - It emits once and completes when the server accepts the mail
 - It errors with a `BloomsightError` (`code: 'MAIL_FAILED'`) when the server
-  rejects it or cannot be reached
+  rejects it or cannot be reached. On blooms.ai, `onError` and `errors$` also
+  get the server's own code for it
 - Under `logOnly` the mail is logged, not sent, and the result still emits and
   completes, so a "sending…" state is always released
 
-Mail always goes to the standalone Bloomsight server, whatever `target` is set
-to.
+Mail goes to the standalone Bloomsight server unless you move it: see
+[Moving mail to blooms.ai](#moving-mail-to-bloomsai). The events `target` never
+moves it.
 
 ## Errors
 
@@ -197,8 +227,10 @@ readonly lastError = toSignal(inject(BloomsightService).errors$);
   keeps running without it. The failure (`INIT_FAILED`) is reported to `onError`
   and the console, on either target. It is not on `errors$`, because startup
   happens before anything can subscribe
-- **Mail failures stay with the mail.** They are the error of that `sendMail()`
-  call, not on `errors$`
+- **Mail failures error their `sendMail()` call**, with `MAIL_FAILED`. On
+  blooms.ai they are also on `onError` and `errors$`, with the server's own code
+  (`TEMPLATE_NOT_FOUND`, `SUBSCRIPTION_SUSPENDED`, …), which the call's error
+  doesn't carry
 - **The standalone server reports almost nothing.** There the SDK reports no
   request failures; only `INIT_FAILED` reaches `onError`
 
@@ -220,8 +252,25 @@ On blooms.ai:
 
 - events go to blooms.ai, and never to the standalone server
 - page views are not collected
-- mail is unchanged: it still goes to the standalone server
+- mail is unchanged: it still goes to the standalone server, until you move it
+  too (below)
 - failures are reported through `onError` and `errors$`
+
+## Moving mail to blooms.ai
+
+Mail has its own switch, so it can move before, after or without events. Every
+`sendMail()` call stays the same.
+
+```ts
+// An app that only sends mail
+provideBloomsightMail({target: 'blooms-ai'});
+
+// An app that records events too
+provideBloomsight({propertyToken: '…', isDevelopmentMode: false, emailTarget: 'blooms-ai'});
+```
+
+To move back, set `'bloomsight'`, or remove the setting. Use one provider, not
+both. If an app has both, `provideBloomsightMail()` decides where mail goes.
 
 ## Server-side rendering
 
@@ -236,9 +285,11 @@ Everything is exported from `@bloomscorp/ngx-bloomsight`:
 | Export | |
 |---|---|
 | `provideBloomsight(config)` | Sets up the SDK |
+| `provideBloomsightMail(config?)` | Sets up mail only, for apps that record no events |
 | `BloomsightService` | `track`, `trackData`, `sendMail`, `errors$` |
 | `BLOOMSIGHT_CONFIG` | Injection token holding the configuration the app started with |
 | `BloomsightConfig` | The configuration |
+| `BloomsightMailConfig` | What `provideBloomsightMail` takes |
 | `BloomsightError` | `{code, message, status?, eventToken?}` |
 | `BloomsightEmailEngine` | `'GMAIL' \| 'CUSTOM_SMTP'` |
 | `BloomsightMailRequest` | What `sendMail` takes |
@@ -257,6 +308,8 @@ TestBed.configureTestingModule({
   providers: [provideBloomsight({propertyToken: 'test', isDevelopmentMode: false, logOnly: true})]
 });
 ```
+
+An app that only sends mail uses `provideBloomsightMail({logOnly: true})`.
 
 In a jsdom test environment (Vitest or Jest), the SDK reads `window.matchMedia`
 at startup, and jsdom doesn't have it. Your tests still pass, but the SDK

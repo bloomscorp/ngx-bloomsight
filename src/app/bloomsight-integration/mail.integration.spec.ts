@@ -11,10 +11,10 @@ import {
 } from '@bloomscorp/ngx-bloomsight';
 
 /**
- * Mail is not part of the blooms.ai migration: it always goes to the
- * standalone Bloomsight server. The config here deliberately sets
- * `target: 'blooms-ai'`, so these tests also prove that switching a project
- * over leaves its email untouched.
+ * Mail moves separately from events: the events `target` never moves it. The
+ * config here deliberately sets `target: 'blooms-ai'` and no `emailTarget`, so
+ * these tests also prove that moving a project's events leaves its email on
+ * the standalone server. Moving mail is covered by the b2-mail* specs.
  */
 const config: BloomsightConfig = {
 	propertyToken: PROPERTY_TOKEN,

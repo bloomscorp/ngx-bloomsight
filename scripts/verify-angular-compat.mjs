@@ -74,13 +74,16 @@ import {inject} from '@angular/core';
 import {Observable} from 'rxjs';
 import {
 	BLOOMSIGHT_CONFIG, BloomsightConfig, BloomsightEmailEngine, BloomsightError,
-	BloomsightEventData, BloomsightMailRequest, BloomsightService, provideBloomsight
+	BloomsightEventData, BloomsightMailConfig, BloomsightMailRequest, BloomsightService,
+	provideBloomsight, provideBloomsightMail
 } from '@bloomscorp/ngx-bloomsight';
 const config: BloomsightConfig = {
-	propertyToken: 'p', isDevelopmentMode: false, target: 'blooms-ai',
+	propertyToken: 'p', isDevelopmentMode: false, target: 'blooms-ai', emailTarget: 'blooms-ai',
 	onError: (e: BloomsightError) => void e.code
 };
 export const providers = [provideBloomsight(config)];
+const mailOnly: BloomsightMailConfig = {target: 'blooms-ai', apiBase: 'https://z.bloomscorp.com', logOnly: false};
+export const mailOnlyProviders = [provideBloomsightMail(mailOnly), provideBloomsightMail()];
 export const engine: BloomsightEmailEngine = 'CUSTOM_SMTP';
 export function useBloomsight(): Observable<void> {
 	const bloomsight: BloomsightService = inject(BloomsightService);
