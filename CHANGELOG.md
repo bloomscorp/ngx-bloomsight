@@ -1,5 +1,11 @@
 # Changelog
 
+# [2.1.0](https://github.com/bloomscorp/ngx-bloomsight/compare/v2.0.0...v2.1.0) (2026-10-25)
+
+### Features
+
+* provideBloomsightMail() and emailTarget move mail to blooms.ai ([9241393](https://github.com/bloomscorp/ngx-bloomsight/commit/9241393a64f3eb2d444d2acfeae4b9f685feda12))
+
 # [2.0.0](https://github.com/bloomscorp/ngx-bloomsight/compare/v1.6.0...v2.0.0) (2026-10-15)
 
 * feat!: provideBloomsight() and one BloomsightService replace the 1.x module ([ed6091c](https://github.com/bloomscorp/ngx-bloomsight/commit/ed6091ce0ff9247e1c93d6242fe582bf4aeed484))
